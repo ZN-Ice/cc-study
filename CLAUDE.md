@@ -1043,6 +1043,7 @@ pnpm build
 |------|------|
 | 研发规范 | `/CLAUDE.md` |
 | 参考源码 | `/free-code/`（不提交 Git） |
+| CI 流水线 | `/.github/workflows/ci.yml` |
 | 学习笔记 | `/docs/notes/` |
 | 设计文档 | `/docs/design/` |
 | 任务记录 | `/docs/task/task_records.json` |
@@ -1058,6 +1059,6 @@ pnpm build
 
 ---
 
-**版本**：v1.0.0
+**版本**：v1.1.0
 **创建日期**：2026-04-01
 **维护者**：cc-study 学习项目

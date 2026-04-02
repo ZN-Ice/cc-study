@@ -1,0 +1,422 @@
+# cc-study - CI门禁
+# 在PR创建/更新及push到main时触发
+#
+# 门禁检查项：
+# 1. 构建检查 - 验证TypeScript编译
+# 2. Lint检查 - ESLint代码规范（reviewdog自动评论）
+# 3. 类型检查 - TypeScript严格模式
+# 4. 单元测试 - Vitest业务逻辑验证（含覆盖率）
+# 5. 安全检查 - 硬编码密钥检测 + 依赖漏洞扫描
+# 6. AI代码审查 - presubmit/ai-reviewer + GLM-4.7 智能分析
+#
+# AI审查配置：
+# - 使用 presubmit/ai-reviewer GitHub Action
+# - API地址: https://open.bigmodel.cn/api/coding/paas/v4
+# - 模型: GLM-4.7
+# - 需要配置 GLM_API_KEY secret
+#
+# @see CLAUDE.md 九、Harness管控红线
+
+name: CI Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+# 权限配置：PR评论需要 write 权限
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+# 并发控制：同一PR/分支只保留最新的workflow
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '9'
+
+jobs:
+  # ==================== 构建检查 ====================
+  build:
+    name: 构建检查
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 安装pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: 设置依赖缓存
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建
+        run: pnpm build
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  # ==================== Lint检查 ====================
+  lint:
+    name: Lint检查
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 10
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 安装pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: 设置依赖缓存
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 运行ESLint
+        run: pnpm lint --format json --output-file eslint-report.json || true
+
+      - name: 发布ESLint报告（reviewdog）
+        if: github.event_name == 'pull_request' && always()
+        uses: reviewdog/action-eslint@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          filter_mode: added
+          fail_on_error: true
+
+  # ==================== 类型检查 ====================
+  typecheck:
+    name: 类型检查
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 5
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 安装pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: 设置依赖缓存
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript类型检查
+        run: pnpm typecheck
+
+  # ==================== 单元测试（含覆盖率） ====================
+  unit-test:
+    name: 单元测试
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 15
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 安装pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: 设置依赖缓存
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 运行单元测试
+        run: pnpm test:coverage
+
+      - name: 检查覆盖率阈值
+        run: |
+          echo "检查测试覆盖率..."
+          # 覆盖率报告在 coverage/coverage-summary.json
+          # 默认要求 80% 行覆盖率
+          if [ -f coverage/coverage-summary.json ]; then
+            TOTAL_LINES=$(cat coverage/coverage-summary.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['total']['lines']['pct'])")
+            echo "行覆盖率: ${TOTAL_LINES}%"
+            if (( $(echo "$TOTAL_LINES < 80" | bc -l) )); then
+              echo "::warning::测试覆盖率 ${TOTAL_LINES}% 低于目标 80%"
+            else
+              echo "::notice::测试覆盖率 ${TOTAL_LINES}% 达标"
+            fi
+          else
+            echo "::warning::未找到覆盖率报告，跳过覆盖率检查"
+          fi
+
+      - name: 上传测试报告
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report
+          path: |
+            coverage/
+          retention-days: 14
+
+      - name: 发布测试结果评论
+        if: github.event_name == 'pull_request' && always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Vitest 测试结果
+          path: coverage/junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
+  # ==================== 安全检查 ====================
+  security:
+    name: 安全检查
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 5
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 依赖漏洞扫描
+        run: |
+          # 安装pnpm用于审计
+          npm install -g pnpm@${{ env.PNPM_VERSION }}
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm audit --audit-level=high || true
+          else
+            echo "::notice::未找到pnpm-lock.yaml，跳过依赖审计"
+          fi
+
+      - name: 检查硬编码密钥
+        run: |
+          echo "检查硬编码API密钥..."
+          # 排除测试文件和free-code参考源码
+          if grep -rE "(api[_-]?key|apikey|secret|password|token)\s*[=:]\s*['\"][^'\"]{10,}['\"]" \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
+            --exclude-dir="node_modules" --exclude-dir="dist" --exclude-dir="free-code" \
+            --exclude-dir="coverage" --exclude-dir="tests" .; then
+            echo "::error::发现硬编码的密钥，请使用环境变量或加密存储"
+            exit 1
+          fi
+          echo "::notice::未发现硬编码密钥"
+
+      - name: 检查敏感文件
+        run: |
+          echo "检查敏感文件..."
+          SENSITIVE_FILES=(
+            ".env"
+            ".env.local"
+            ".env.production"
+            "*.pem"
+            "*.key"
+            "secrets.json"
+            "credentials.json"
+          )
+
+          for file in "${SENSITIVE_FILES[@]}"; do
+            if ls $file 2>/dev/null | grep -q .; then
+              echo "::error::发现敏感文件: $file，请添加到.gitignore"
+              exit 1
+            fi
+          done
+          echo "::notice::未发现敏感文件"
+
+  # ==================== AI代码审查（ai-reviewer + GLM-4.7） ====================
+  ai-review:
+    name: AI代码审查
+    runs-on: ubuntu-latest
+    needs: [build, lint, typecheck, unit-test, security]
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: AI代码审查
+        uses: presubmit/ai-reviewer@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          LLM_MODEL: "GLM-4.7"
+          LLM_PROVIDER: "ai-sdk"
+          LLM_BASE_URL: "https://open.bigmodel.cn/api/coding/paas/v4"
+
+  # ==================== 门禁结果汇总 ====================
+  gate-result:
+    name: 门禁结果
+    runs-on: ubuntu-latest
+    needs: [build, lint, typecheck, unit-test, security, ai-review]
+    if: always()
+
+    steps:
+      - name: 检查门禁结果
+        run: |
+          echo "============================================"
+          echo "  GitHub Actions 门禁结果"
+          echo "============================================"
+          echo ""
+
+          BUILD_RESULT="${{ needs.build.result }}"
+          LINT_RESULT="${{ needs.lint.result }}"
+          TYPECHECK_RESULT="${{ needs.typecheck.result }}"
+          TEST_RESULT="${{ needs.unit-test.result }}"
+          SECURITY_RESULT="${{ needs.security.result }}"
+          AI_REVIEW_RESULT="${{ needs.ai-review.result }}"
+
+          echo "| 检查项 | 状态 |"
+          echo "|-------|------|"
+          echo "| 构建 | $BUILD_RESULT |"
+          echo "| Lint | $LINT_RESULT |"
+          echo "| 类型检查 | $TYPECHECK_RESULT |"
+          echo "| 单元测试 | $TEST_RESULT |"
+          echo "| 安全检查 | $SECURITY_RESULT |"
+          echo "| AI代码审查 | $AI_REVIEW_RESULT |"
+          echo ""
+
+          if [[ "$BUILD_RESULT" == "success" && \
+                "$LINT_RESULT" == "success" && \
+                "$TYPECHECK_RESULT" == "success" && \
+                "$TEST_RESULT" == "success" && \
+                "$SECURITY_RESULT" == "success" ]]; then
+            echo "✅ 所有门禁检查通过！"
+            exit 0
+          else
+            echo "❌ 门禁检查未通过，请修复上述问题"
+            exit 1
+          fi
+
+      - name: PR门禁状态评论
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const buildResult = '${{ needs.build.result }}';
+            const lintResult = '${{ needs.lint.result }}';
+            const typecheckResult = '${{ needs.typecheck.result }}';
+            const testResult = '${{ needs.unit-test.result }}';
+            const securityResult = '${{ needs.security.result }}';
+            const aiReviewResult = '${{ needs.ai-review.result }}';
+
+            const statusEmoji = (status) => status === 'success' ? '✅' : (status === 'skipped' ? '⏭️' : '❌');
+
+            const body = `## 🔒 门禁检查结果
+
+            | 检查项 | 状态 |
+            |-------|------|"
+            | 构建 | ${statusEmoji(buildResult)} ${buildResult} |
+            | Lint | ${statusEmoji(lintResult)} ${lintResult} |
+            | 类型检查 | ${statusEmoji(typecheckResult)} ${typecheckResult} |
+            | 单元测试 | ${statusEmoji(testResult)} ${testResult} |
+            | 安全检查 | ${statusEmoji(securityResult)} ${securityResult} |
+            | AI代码审查 | ${statusEmoji(aiReviewResult)} ${aiReviewResult} |
+
+            ${buildResult === 'success' && lintResult === 'success' && typecheckResult === 'success' && testResult === 'success' && securityResult === 'success'
+              ? '### ✅ 所有检查通过，可以合入\n\n> 点击 **Squash and merge** 合并此PR'
+              : '### ❌ 存在未通过的检查，请修复后重新提交'}
+            `;
+
+            // 查找并更新现有评论
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🔒 门禁检查结果')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
