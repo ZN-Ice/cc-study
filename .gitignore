@@ -1,0 +1,29 @@
+# Claude Code 参考源码（本地学习用，不提交）
+free-code/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
