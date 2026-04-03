@@ -7,11 +7,11 @@
     "source_ref": "free-code/src/entrypoints/cli.tsx",
     "task_desc": "研读 Claude Code CLI 入口：参数解析、启动流程、Ink 渲染初始化",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 cli.mjs → entrypoints/cli.tsx 的启动链"
+    "finish_time": "2026-04-03 22:25:00",
+    "check_result": "通过",
+    "remark": "理解 cli.mjs → entrypoints/cli.tsx 的启动链，笔记已记录到 docs/notes/phase0-cli-entrypoint.md"
   },
   {
     "task_id": "P0002",
@@ -21,11 +21,11 @@
     "source_ref": "free-code/src/constants/prompts.ts",
     "task_desc": "研读系统提示词结构：System Prompt 拼接规则、工具描述注入方式",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "重点理解 prompts.ts 如何组装最终发给 LLM 的 system prompt"
+    "finish_time": "2026-04-03 22:26:00",
+    "check_result": "通过",
+    "remark": "重点理解 prompts.ts 如何组装最终发给 LLM 的 system prompt，已记录到笔记"
   },
   {
     "task_id": "P0003",
@@ -35,11 +35,11 @@
     "source_ref": "free-code/src/entrypoints/cli.tsx",
     "task_desc": "编写项目骨架设计文档：CLI 入口架构、配置加载链、模块划分",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "输出到 docs/design/phase0-skeleton.md"
+    "finish_time": "2026-04-03 22:27:00",
+    "check_result": "通过",
+    "remark": "输出到 docs/design/phase0-skeleton.md，含架构设计、接口定义、测试规划"
   },
   {
     "task_id": "P0004",
@@ -49,11 +49,11 @@
     "source_ref": "free-code/src/entrypoints/cli.tsx",
     "task_desc": "实现项目骨架：package.json、tsconfig.json、CLI 入口（--help/--version）、基础 REPL 空壳",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "pnpm dev 可启动，支持 --help/--version，Ink 渲染基础空壳"
+    "finish_time": "2026-04-03 22:33:00",
+    "check_result": "通过",
+    "remark": "pnpm dev 可启动，支持 --help/--version，Ink 渲染基础空壳。类型检查通过，构建通过"
   },
   {
     "task_id": "P0005",
@@ -63,11 +63,11 @@
     "source_ref": null,
     "task_desc": "编写项目骨架单元测试：CLI 参数解析、版本输出、帮助信息",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "覆盖率目标：80%+"
+    "finish_time": "2026-04-03 22:30:00",
+    "check_result": "通过",
+    "remark": "8个测试用例全部通过，cli.ts 行覆盖率100%"
   },
   {
     "task_id": "P1001",
