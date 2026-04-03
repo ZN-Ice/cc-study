@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install:*)",
+      "Bash(npm --version)",
+      "Bash(npm install:*)",
+      "Bash(export PATH=\"$PATH:/c/Users/zhang/AppData/Roaming/npm\")",
+      "Bash(pnpm --version)",
+      "Bash(npm root:*)",
+      "Bash(ls C:Userszhang.npm-global/pnbin*)",
+      "Bash(ls C:Userszhang.npm-global/*.cmd)",
+      "Bash(ls C:UserszhangAppDataRoamingnpm/pnpm*)",
+      "Read(//c/Users/zhang/**)",
+      "Bash(npm config:*)",
+      "Bash(ls /c/Users/zhang/.npm-global/pnpm*)",
+      "Read(//c/Program Files/nodejs/**)",
+      "Bash(where.exe pnpm:*)",
+      "Bash(export PATH=\"/c/Users/zhang/.npm-global:$PATH\")",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm test:coverage)",
+      "Bash(pnpm add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh run:*)",
+      "Bash(gh api:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(git pull:*)"
+    ]
+  }
+}
