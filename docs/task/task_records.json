@@ -77,11 +77,11 @@
     "source_ref": "free-code/src/screens/REPL.tsx",
     "task_desc": "研读 REPL 主屏幕：状态管理、消息列表渲染、流式响应处理、用户输入交互",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "核心文件，需要深入理解 REPL 的完整生命周期"
+    "finish_time": "2026-04-03 23:30:00",
+    "check_result": "通过",
+    "remark": "已研读 REPL.tsx 架构（~70个状态、6个核心Hook、完整消息处理链路），笔记记录到 docs/notes/phase1-repl-core.md"
   },
   {
     "task_id": "P1002",
@@ -91,11 +91,11 @@
     "source_ref": "free-code/src/messages.ts",
     "task_desc": "研读消息类型系统：UserMessage、AssistantMessage、ToolUseMessage、ToolResultMessage 的数据结构",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解消息模型的联合类型与内容块设计"
+    "finish_time": "2026-04-03 23:30:00",
+    "check_result": "通过",
+    "remark": "已研读消息联合类型、10种内容块、工具调用配对、消息序列化10步管道，笔记记录到 docs/notes/phase1-repl-core.md"
   },
   {
     "task_id": "P1003",
@@ -105,11 +105,11 @@
     "source_ref": "free-code/src/services/claude.ts",
     "task_desc": "研读 API 交互层：流式请求、token 迭代、tool_use 事件处理、错误重试",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 Anthropic SDK messages.stream() 的封装模式"
+    "finish_time": "2026-04-03 23:30:00",
+    "check_result": "通过",
+    "remark": "已研读 AsyncGenerator 流式架构、指数退避重试（429/529）、VCR录制回放、笔记记录到 docs/notes/phase1-repl-core.md"
   },
   {
     "task_id": "P1004",
@@ -119,11 +119,11 @@
     "source_ref": "free-code/src/context.ts",
     "task_desc": "研读上下文管理：上下文窗口计算、消息压缩策略、compact 命令实现",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 context window 的 token 计数与压缩机制"
+    "finish_time": "2026-04-03 23:30:00",
+    "check_result": "通过",
+    "remark": "已研读 context.ts 的 memoize 缓存模式（getGitStatus/getUserContext/getSystemContext），Git状态2000字符截断，笔记记录到 docs/notes/phase1-repl-core.md"
   },
   {
     "task_id": "P1005",
