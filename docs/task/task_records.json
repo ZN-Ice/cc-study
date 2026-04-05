@@ -133,11 +133,11 @@
     "source_ref": "free-code/src/screens/REPL.tsx",
     "task_desc": "编写 REPL 设计文档：交互循环架构、消息流、流式渲染方案、中断处理",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "输出到 docs/design/phase1-repl.md"
+    "finish_time": "2026-04-05 13:45:00",
+    "check_result": "通过",
+    "remark": "输出到 docs/design/phase1-repl.md，含消息类型、API层、UI组件、流式Hook完整设计"
   },
   {
     "task_id": "P1006",
@@ -147,11 +147,11 @@
     "source_ref": "free-code/src/screens/REPL.tsx",
     "task_desc": "实现 REPL 交互循环：PromptInput → API 流式调用 → Message 渲染 → 多轮对话",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "使用 Ink 的 useInput + useState 管理交互状态"
+    "finish_time": "2026-04-05 13:45:00",
+    "check_result": "通过",
+    "remark": "实现消息模型、API流式调用、useStreamResponse Hook、REPL主屏幕，支持多轮对话和Ctrl+C中断"
   },
   {
     "task_id": "P1007",
@@ -161,11 +161,11 @@
     "source_ref": "free-code/src/components/",
     "task_desc": "实现终端 UI 组件：PromptInput、Message、Spinner、流式文本渲染",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "Ink React 组件，支持终端尺寸自适应"
+    "finish_time": "2026-04-05 13:45:00",
+    "check_result": "通过",
+    "remark": "实现 PromptInput、MessageView、MessageList、Spinner 四个 Ink 组件"
   },
   {
     "task_id": "P1008",
@@ -175,11 +175,11 @@
     "source_ref": null,
     "task_desc": "编写 REPL 单元测试：消息状态管理、流式处理 Mock、中断逻辑",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "覆盖率目标：50%+（REPL 组件测试难度较高）"
+    "finish_time": "2026-04-05 13:45:00",
+    "check_result": "通过",
+    "remark": "messages.ts 100%覆盖、api.ts 90.32%覆盖，26个测试用例全部通过"
   },
   {
     "task_id": "P2001",
