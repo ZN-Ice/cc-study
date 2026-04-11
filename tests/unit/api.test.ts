@@ -1,7 +1,9 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   parseSSEStream,
   streamChat,
+  resolveApiUrl,
+  resolveApiKey,
   type APIConfig,
   type StreamEvent,
 } from "../../src/services/api.js";
@@ -49,6 +51,13 @@ function createChunkedSSEResponse(chunks: string[]): Response {
 }
 
 describe("services/api", () => {
+  // Shared mock for node:fs (used by resolveApiUrl / resolveApiKey tests)
+  const fsMock = vi.hoisted(() => ({
+    readFileSync: vi.fn(),
+  }));
+
+  vi.mock("node:fs", () => fsMock);
+
   describe("parseSSEStream", () => {
     test("parses complete SSE events", async () => {
       const events = [
@@ -137,7 +146,8 @@ describe("services/api", () => {
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       const [url, options] = fetchSpy.mock.calls[0];
-      expect(url).toBe("https://api.anthropic.com/v1/messages");
+      // URL resolved from ~/.claude/settings.json or default
+      expect(url).toContain("/v1/messages");
       expect(options.method).toBe("POST");
       expect(options.headers["x-api-key"]).toBe("test-key");
       expect(options.headers["anthropic-version"]).toBe("2023-06-01");
@@ -206,6 +216,85 @@ describe("services/api", () => {
           // consume
         }
       }).rejects.toThrow(/aborted/i);
+    });
+  });
+
+  describe("resolveApiUrl", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test("returns default URL when settings.json has no ANTHROPIC_BASE_URL", () => {
+      fsMock.readFileSync.mockReturnValue(JSON.stringify({}));
+      expect(resolveApiUrl()).toBe("https://api.anthropic.com/v1/messages");
+    });
+
+    test("returns configured URL from settings.json", () => {
+      fsMock.readFileSync.mockReturnValue(
+        JSON.stringify({ env: { ANTHROPIC_BASE_URL: "https://custom.api.com/anthropic" } })
+      );
+      expect(resolveApiUrl()).toBe("https://custom.api.com/anthropic/v1/messages");
+    });
+
+    test("strips trailing slashes from base URL", () => {
+      fsMock.readFileSync.mockReturnValue(
+        JSON.stringify({ env: { ANTHROPIC_BASE_URL: "https://custom.api.com/anthropic/" } })
+      );
+      expect(resolveApiUrl()).toBe("https://custom.api.com/anthropic/v1/messages");
+    });
+
+    test("strips multiple trailing slashes from base URL", () => {
+      fsMock.readFileSync.mockReturnValue(
+        JSON.stringify({ env: { ANTHROPIC_BASE_URL: "https://custom.api.com/anthropic///" } })
+      );
+      expect(resolveApiUrl()).toBe("https://custom.api.com/anthropic/v1/messages");
+    });
+
+    test("falls back to default when settings.json not found", () => {
+      fsMock.readFileSync.mockImplementation(() => {
+        throw new Error("ENOENT");
+      });
+      expect(resolveApiUrl()).toBe("https://api.anthropic.com/v1/messages");
+    });
+
+    test("falls back to default when settings.json is invalid JSON", () => {
+      fsMock.readFileSync.mockReturnValue("not valid json {");
+      expect(resolveApiUrl()).toBe("https://api.anthropic.com/v1/messages");
+    });
+  });
+
+  describe("resolveApiKey", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      delete process.env.ANTHROPIC_API_KEY;
+    });
+
+    test("returns token from settings.json", () => {
+      fsMock.readFileSync.mockReturnValue(
+        JSON.stringify({ env: { ANTHROPIC_AUTH_TOKEN: "settings-token-123" } })
+      );
+      expect(resolveApiKey()).toBe("settings-token-123");
+    });
+
+    test("falls back to ANTHROPIC_API_KEY env var when settings has no token", () => {
+      fsMock.readFileSync.mockReturnValue(JSON.stringify({}));
+      process.env.ANTHROPIC_API_KEY = "env-token-456";
+      expect(resolveApiKey()).toBe("env-token-456");
+    });
+
+    test("settings.json token takes priority over env var", () => {
+      fsMock.readFileSync.mockReturnValue(
+        JSON.stringify({ env: { ANTHROPIC_AUTH_TOKEN: "settings-token" } })
+      );
+      process.env.ANTHROPIC_API_KEY = "env-token";
+      expect(resolveApiKey()).toBe("settings-token");
+    });
+
+    test("returns empty string when neither is configured", () => {
+      fsMock.readFileSync.mockImplementation(() => {
+        throw new Error("ENOENT");
+      });
+      expect(resolveApiKey()).toBe("");
     });
   });
 });

@@ -376,6 +376,8 @@ const delay = Math.min(
 
 ### 3.4 API 客户端配置
 
+**源码做法**：使用 Anthropic SDK，通过环境变量配置。
+
 ```typescript
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -386,6 +388,27 @@ const anthropic = new Anthropic({
   },
 });
 ```
+
+**cc-study 实现**：不使用 SDK，直接 fetch + SSE 解析。配置优先从 `~/.claude/settings.json` 读取。
+
+```typescript
+// URL 解析优先级：settings.json > 默认值
+export function resolveApiUrl(): string {
+  const env = readSettingsEnv();
+  if (env.ANTHROPIC_BASE_URL) {
+    return `${env.ANTHROPIC_BASE_URL.replace(/\/+$/, "")}/v1/messages`;
+  }
+  return "https://api.anthropic.com/v1/messages";
+}
+
+// API Key 解析优先级：settings.json ANTHROPIC_AUTH_TOKEN > 环境变量 ANTHROPIC_API_KEY
+export function resolveApiKey(): string {
+  const env = readSettingsEnv();
+  return env.ANTHROPIC_AUTH_TOKEN ?? process.env.ANTHROPIC_API_KEY ?? "";
+}
+```
+
+> **设计差异**：源码用 SDK 封装了重试和超时，cc-study 直接用 fetch 以深入理解 SSE 流式协议。配置来源增加了 settings.json 支持，与 Claude Code 实际运行时行为一致。
 
 ---
 

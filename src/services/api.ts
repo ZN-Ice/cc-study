@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { Message } from "../messages.js";
 import { normalizeForAPI } from "../messages.js";
 
@@ -102,7 +105,52 @@ export async function* parseSSEStream(response: Response): AsyncGenerator<Stream
 // Stream Chat
 // ──────────────────────────────────────────────
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+const DEFAULT_API_URL = "https://api.anthropic.com/v1/messages";
+
+interface SettingsEnv {
+  ANTHROPIC_BASE_URL?: string;
+  ANTHROPIC_AUTH_TOKEN?: string;
+}
+
+/**
+ * Read env overrides from ~/.claude/settings.json.
+ * Returns an empty object if the file is missing or invalid.
+ */
+function readSettingsEnv(): SettingsEnv {
+  try {
+    const settingsPath = join(homedir(), ".claude", "settings.json");
+    const raw = readFileSync(settingsPath, "utf-8");
+    const settings = JSON.parse(raw) as { env?: Record<string, string> };
+    const env = settings.env ?? {};
+    return {
+      ANTHROPIC_BASE_URL: env.ANTHROPIC_BASE_URL,
+      ANTHROPIC_AUTH_TOKEN: env.ANTHROPIC_AUTH_TOKEN,
+    };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Resolve the API URL: settings.json > default.
+ */
+export function resolveApiUrl(): string {
+  const env = readSettingsEnv();
+  if (env.ANTHROPIC_BASE_URL) {
+    return `${env.ANTHROPIC_BASE_URL.replace(/\/+$/, "")}/v1/messages`;
+  }
+  return DEFAULT_API_URL;
+}
+
+/**
+ * Resolve the API key: settings.json > env var ANTHROPIC_API_KEY.
+ */
+export function resolveApiKey(): string {
+  const env = readSettingsEnv();
+  return env.ANTHROPIC_AUTH_TOKEN ?? process.env.ANTHROPIC_API_KEY ?? "";
+}
+
+const ANTHROPIC_API_URL = resolveApiUrl();
 
 /**
  * Stream a chat completion from the Anthropic API.

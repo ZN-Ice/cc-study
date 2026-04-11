@@ -8,6 +8,7 @@ import { useStreamResponse } from "../hooks/useStreamResponse.js";
 import { SYSTEM_PROMPT, DEFAULT_API_CONFIG } from "../constants/prompts.js";
 import { VERSION } from "../constants/version.js";
 import type { APIConfig } from "../services/api.js";
+import { resolveApiKey } from "../services/api.js";
 
 interface AppProps {
   readonly model: string;
@@ -21,7 +22,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
   const [messages, setMessages] = useState<readonly Message[]>([]);
 
   const apiConfig: APIConfig = {
-    apiKey: apiKey ?? process.env.ANTHROPIC_API_KEY ?? "",
+    apiKey: apiKey ?? resolveApiKey(),
     model,
     maxTokens: DEFAULT_API_CONFIG.maxTokens,
     systemPrompt: SYSTEM_PROMPT,

@@ -107,6 +107,73 @@ interface APIConfig {
 }
 ```
 
+### 3.4 API 配置解析
+
+API URL 和 API Key 均支持从配置文件覆盖，优先级如下：
+
+**API URL**：
+1. `~/.claude/settings.json` 中的 `env.ANTHROPIC_BASE_URL`（拼接 `/v1/messages`）
+2. 默认值 `https://api.anthropic.com/v1/messages`
+
+**API Key**：
+1. `~/.claude/settings.json` 中的 `env.ANTHROPIC_AUTH_TOKEN`
+2. 环境变量 `ANTHROPIC_API_KEY`
+3. 空字符串（兜底）
+
+```typescript
+// src/services/api.ts
+
+const DEFAULT_API_URL = "https://api.anthropic.com/v1/messages";
+
+interface SettingsEnv {
+  ANTHROPIC_BASE_URL?: string;
+  ANTHROPIC_AUTH_TOKEN?: string;
+}
+
+function readSettingsEnv(): SettingsEnv {
+  try {
+    const settingsPath = join(homedir(), ".claude", "settings.json");
+    const raw = readFileSync(settingsPath, "utf-8");
+    const settings = JSON.parse(raw) as { env?: Record<string, string> };
+    const env = settings.env ?? {};
+    return {
+      ANTHROPIC_BASE_URL: env.ANTHROPIC_BASE_URL,
+      ANTHROPIC_AUTH_TOKEN: env.ANTHROPIC_AUTH_TOKEN,
+    };
+  } catch {
+    return {};
+  }
+}
+
+export function resolveApiUrl(): string {
+  const env = readSettingsEnv();
+  if (env.ANTHROPIC_BASE_URL) {
+    return `${env.ANTHROPIC_BASE_URL.replace(/\/+$/, "")}/v1/messages`;
+  }
+  return DEFAULT_API_URL;
+}
+
+export function resolveApiKey(): string {
+  const env = readSettingsEnv();
+  return env.ANTHROPIC_AUTH_TOKEN ?? process.env.ANTHROPIC_API_KEY ?? "";
+}
+
+const ANTHROPIC_API_URL = resolveApiUrl();
+```
+
+**配置示例**（`~/.claude/settings.json`）：
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "your-api-key-here"
+  }
+}
+```
+上述配置将生成 API URL：`https://open.bigmodel.cn/api/anthropic/v1/messages`，并使用 `ANTHROPIC_AUTH_TOKEN` 作为 API Key。
+
+**CI 环境兼容**：无 `settings.json` 时，URL 回退到默认值，API Key 回退到环境变量 `ANTHROPIC_API_KEY`。
+
 ## 四、交互循环架构
 
 ### 4.1 状态模型
@@ -221,8 +288,8 @@ export async function* streamChat(
     stream: true,
   };
 
-  // 2. 发起请求
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  // 2. 发起请求（URL 从 ~/.claude/settings.json 读取，见 resolveApiUrl()）
+  const response = await fetch(ANTHROPIC_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -388,15 +455,31 @@ API 调用使用 Node.js 内置 `fetch`（Node.js >= 18 内置），不依赖 An
 | 测试模块 | 覆盖目标 | 重点用例 |
 |---------|---------|---------|
 | messages.ts | 90%+ | 消息创建、ID生成、内容块类型 |
-| services/api.ts | 70%+ | SSE解析、中断处理、错误处理 |
+| services/api.ts | 70%+ | SSE解析、中断处理、错误处理、URL/Key解析 |
 | hooks/useStreamResponse | 60%+ | 发送流程、取消流程 |
 
-### 9.2 Mock 策略
+### 9.2 集成测试
+
+| 测试文件 | 说明 |
+|---------|------|
+| `tests/integration/api-integration.test.ts` | 真实 API 调用测试 |
+
+- 有 API Key 时执行，无 Key 时自动跳过（`describe.skipIf`）
+- 验证流式响应完整性、中断信号处理
+- CI 环境中自动跳过，不影响门禁
+
+### 9.3 Mock 策略
 
 ```typescript
 // Mock fetch 用于 API 测试
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
+
+// Mock node:fs 用于配置解析测试
+const fsMock = vi.hoisted(() => ({
+  readFileSync: vi.fn(),
+}));
+vi.mock("node:fs", () => fsMock);
 
 // 创建 mock SSE 流
 function createMockSSEStream(events: object[]): Response {
