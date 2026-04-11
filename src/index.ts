@@ -29,11 +29,13 @@ Options:
   }
 
   // Default: launch interactive REPL
+  // exitOnCtrlC: false — let App.tsx handle Ctrl+C (cancel streaming vs quit)
   render(
     React.createElement(App, {
       model: options.model,
       debug: options.debug,
     }),
+    { exitOnCtrlC: false },
   );
 }
 
