@@ -189,6 +189,7 @@ describe("useStreamResponse", () => {
     const mockStreamChat = vi.mocked(streamChat);
 
     async function* failingStream() {
+      // eslint-disable-next-line require-yield — intentionally throws before yielding
       throw new Error("API rate limit exceeded");
     }
 

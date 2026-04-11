@@ -47,7 +47,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       exit();
     } else if (result.shouldShowHint) {
       exitTimerRef.current = setTimeout(() => {
-        setExitState(twoPressReducer(exitState, "timeout").state);
+        setExitState((prev) => twoPressReducer(prev, "timeout").state);
       }, 2000);
     }
   }, [exit, exitState]);
