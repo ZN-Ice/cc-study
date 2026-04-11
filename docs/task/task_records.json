@@ -77,11 +77,11 @@
     "source_ref": "free-code/src/screens/REPL.tsx",
     "task_desc": "研读 REPL 主屏幕：状态管理、消息列表渲染、流式响应处理、用户输入交互",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "核心文件，需要深入理解 REPL 的完整生命周期"
+    "finish_time": "2026-04-03 23:30:00",
+    "check_result": "通过",
+    "remark": "已研读 REPL.tsx 架构（~70个状态、6个核心Hook、完整消息处理链路），笔记记录到 docs/notes/phase1-repl-core.md"
   },
   {
     "task_id": "P1002",
@@ -91,11 +91,11 @@
     "source_ref": "free-code/src/messages.ts",
     "task_desc": "研读消息类型系统：UserMessage、AssistantMessage、ToolUseMessage、ToolResultMessage 的数据结构",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解消息模型的联合类型与内容块设计"
+    "finish_time": "2026-04-03 23:30:00",
+    "check_result": "通过",
+    "remark": "已研读消息联合类型、10种内容块、工具调用配对、消息序列化10步管道，笔记记录到 docs/notes/phase1-repl-core.md"
   },
   {
     "task_id": "P1003",
@@ -105,11 +105,11 @@
     "source_ref": "free-code/src/services/claude.ts",
     "task_desc": "研读 API 交互层：流式请求、token 迭代、tool_use 事件处理、错误重试",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 Anthropic SDK messages.stream() 的封装模式"
+    "finish_time": "2026-04-03 23:30:00",
+    "check_result": "通过",
+    "remark": "已研读 AsyncGenerator 流式架构、指数退避重试（429/529）、VCR录制回放、笔记记录到 docs/notes/phase1-repl-core.md"
   },
   {
     "task_id": "P1004",
@@ -119,11 +119,11 @@
     "source_ref": "free-code/src/context.ts",
     "task_desc": "研读上下文管理：上下文窗口计算、消息压缩策略、compact 命令实现",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 context window 的 token 计数与压缩机制"
+    "finish_time": "2026-04-03 23:30:00",
+    "check_result": "通过",
+    "remark": "已研读 context.ts 的 memoize 缓存模式（getGitStatus/getUserContext/getSystemContext），Git状态2000字符截断，笔记记录到 docs/notes/phase1-repl-core.md"
   },
   {
     "task_id": "P1005",
@@ -133,11 +133,11 @@
     "source_ref": "free-code/src/screens/REPL.tsx",
     "task_desc": "编写 REPL 设计文档：交互循环架构、消息流、流式渲染方案、中断处理",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "输出到 docs/design/phase1-repl.md"
+    "finish_time": "2026-04-05 13:45:00",
+    "check_result": "通过",
+    "remark": "输出到 docs/design/phase1-repl.md，含消息类型、API层、UI组件、流式Hook完整设计"
   },
   {
     "task_id": "P1006",
@@ -147,11 +147,11 @@
     "source_ref": "free-code/src/screens/REPL.tsx",
     "task_desc": "实现 REPL 交互循环：PromptInput → API 流式调用 → Message 渲染 → 多轮对话",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "使用 Ink 的 useInput + useState 管理交互状态"
+    "finish_time": "2026-04-05 13:45:00",
+    "check_result": "通过",
+    "remark": "实现消息模型、API流式调用、useStreamResponse Hook、REPL主屏幕，支持多轮对话和Ctrl+C中断"
   },
   {
     "task_id": "P1007",
@@ -161,11 +161,11 @@
     "source_ref": "free-code/src/components/",
     "task_desc": "实现终端 UI 组件：PromptInput、Message、Spinner、流式文本渲染",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "Ink React 组件，支持终端尺寸自适应"
+    "finish_time": "2026-04-05 13:45:00",
+    "check_result": "通过",
+    "remark": "实现 PromptInput、MessageView、MessageList、Spinner 四个 Ink 组件"
   },
   {
     "task_id": "P1008",
@@ -175,11 +175,11 @@
     "source_ref": null,
     "task_desc": "编写 REPL 单元测试：消息状态管理、流式处理 Mock、中断逻辑",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "覆盖率目标：50%+（REPL 组件测试难度较高）"
+    "finish_time": "2026-04-05 13:45:00",
+    "check_result": "通过",
+    "remark": "messages.ts 100%覆盖、api.ts 90.32%覆盖，26个测试用例全部通过"
   },
   {
     "task_id": "P2001",
