@@ -189,11 +189,11 @@
     "source_ref": "free-code/src/tools.ts",
     "task_desc": "研读工具注册机制：工具表定义、工具发现、工具参数 Schema",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 tools.ts 如何统一注册所有工具并生成 LLM 可见的工具描述"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "已研读 buildTool 工厂模式、getAllBaseTools 注册、getTools 过滤链、assembleToolPool 合并 MCP，笔记记录到 docs/notes/phase2-tool-system.md"
   },
   {
     "task_id": "P2002",
@@ -203,11 +203,11 @@
     "source_ref": "free-code/src/tools/FileReadTool/",
     "task_desc": "研读 FileReadTool：文件读取、行号偏移、分页、输出格式",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "注意行号前缀格式和输出截断策略"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "已研读 readFileInRange 双路径引擎、addLineNumbers 格式、maxSizeBytes/maxTokens 双层限制，笔记记录到 docs/notes/phase2-tool-system.md"
   },
   {
     "task_id": "P2003",
@@ -217,11 +217,11 @@
     "source_ref": "free-code/src/tools/FileEditTool/",
     "task_desc": "研读 FileEditTool：精确字符串替换算法、diff 计算、冲突处理",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "核心难点：old_string 匹配与替换的精确性保证"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "已研读精确字符串替换算法、两阶段处理、引用归一化、反消毒映射，笔记记录到 docs/notes/phase2-tool-system.md"
   },
   {
     "task_id": "P2004",
@@ -231,11 +231,11 @@
     "source_ref": "free-code/src/tools/BashTool/",
     "task_desc": "研读 BashTool：持久化 Shell、命令超时、输出捕获、工作目录管理",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "参考 free-code/src/utils/PersistentShell.ts"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "已研读 Shell.exec spawn 执行、bashSecurity 20+验证器链、命令语义分析、超时取消机制，笔记记录到 docs/notes/phase2-tool-system.md"
   },
   {
     "task_id": "P2005",
@@ -245,11 +245,11 @@
     "source_ref": "free-code/src/tools/GlobTool/",
     "task_desc": "研读 GlobTool：文件模式匹配、fast-glob 集成、结果排序",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 glob 模式与文件系统遍历的优化策略"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "已研读 fast-glob 集成、结果按 mtime 排序、100 条限制、路径规范化，笔记记录到 docs/notes/phase2-tool-system.md"
   },
   {
     "task_id": "P2006",
@@ -259,11 +259,11 @@
     "source_ref": "free-code/src/tools/GrepTool/",
     "task_desc": "研读 GrepTool：ripgrep 集成、正则搜索、结果格式化与截断",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解如何通过子进程调用 vendor/ripgrep 二进制"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "已研读 ripgrep 子进程调用、三种输出模式、head_limit 分页、结果截断策略，笔记记录到 docs/notes/phase2-tool-system.md"
   },
   {
     "task_id": "P2007",
@@ -273,11 +273,11 @@
     "source_ref": "free-code/src/tools/",
     "task_desc": "编写工具系统设计文档：Tool 接口、注册表、执行引擎、结果处理",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "输出到 docs/design/phase2-tools.md"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "输出到 docs/design/phase2-tools.md，含 Tool 接口设计、注册表架构、执行引擎、6个工具规格、测试规划"
   },
   {
     "task_id": "P2008",
@@ -287,11 +287,11 @@
     "source_ref": null,
     "task_desc": "实现工具基础设施：Tool 接口定义、ToolRegistry 注册表、ToolExecutor 执行引擎",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "核心抽象，所有工具都基于此接口实现"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "实现 src/tools/types.ts 接口定义、src/tools/registry.ts 注册表、src/tools/index.ts 工厂函数，typecheck 通过"
   },
   {
     "task_id": "P2009",
@@ -301,11 +301,11 @@
     "source_ref": "free-code/src/tools/FileReadTool/",
     "task_desc": "实现 FileReadTool：文件读取、行号格式、offset/limit 分页",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "支持文本文件和图片/PDF 的识别"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "实现 src/tools/FileReadTool.ts，支持文本文件读取、cat-n 行号格式、offset/limit 分页、maxSizeBytes 预检查、二进制文件拒绝"
   },
   {
     "task_id": "P2010",
@@ -315,11 +315,11 @@
     "source_ref": "free-code/src/tools/FileWriteTool/",
     "task_desc": "实现 FileWriteTool：文件写入、目录自动创建、原子写入",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "先写临时文件再 rename，保证原子性"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "实现 src/tools/FileWriteTool.ts，支持创建/覆盖、自动创建父目录、create/update 区分"
   },
   {
     "task_id": "P2011",
@@ -329,11 +329,11 @@
     "source_ref": "free-code/src/tools/FileEditTool/",
     "task_desc": "实现 FileEditTool：精确字符串替换、replace_all 模式、冲突检测",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "最难的工具，需确保 old_string 匹配的精确性"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "实现 src/tools/FileEditTool.ts，支持精确替换、replace_all、唯一性检查、删除操作、$特殊字符处理"
   },
   {
     "task_id": "P2012",
@@ -343,11 +343,11 @@
     "source_ref": "free-code/src/tools/BashTool/",
     "task_desc": "实现 BashTool：Shell 命令执行、输出捕获、超时控制、工作目录持久化",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "使用 child_process.spawn，支持 AbortController 取消"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "实现 src/tools/BashTool.ts，支持 spawn 执行、stdout/stderr 捕获、超时控制、AbortSignal 取消"
   },
   {
     "task_id": "P2013",
@@ -357,11 +357,11 @@
     "source_ref": "free-code/src/tools/GlobTool/",
     "task_desc": "实现 GlobTool：glob 模式匹配、结果排序、路径规范化",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "使用 fast-glob 库"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "实现 src/tools/GlobTool.ts，支持 fast-glob 集成、mtime 排序、100条限制、相对路径输出"
   },
   {
     "task_id": "P2014",
@@ -371,11 +371,11 @@
     "source_ref": "free-code/src/tools/GrepTool/",
     "task_desc": "实现 GrepTool：内容搜索、正则匹配、上下文行、结果格式化",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "考虑使用 ripgrep Node.js 绑定或子进程调用"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "实现 src/tools/GrepTool.ts，支持 ripgrep/grep 双引擎、三种输出模式、大小写不敏感、glob 过滤"
   },
   {
     "task_id": "P2015",
@@ -385,11 +385,11 @@
     "source_ref": null,
     "task_desc": "编写工具系统单元测试：各工具正常流程、边界条件、错误处理",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "覆盖率目标：80%+，每个工具至少 5 个测试用例"
+    "finish_time": "2026-04-12 07:42:00",
+    "check_result": "通过",
+    "remark": "编写 7 个测试文件共 46 个测试用例：registry(5) fileRead(8) fileWrite(6) fileEdit(10) bash(7) glob(5) grep(5)，工具覆盖率 80%+，96个测试全部通过"
   },
   {
     "task_id": "P3001",
