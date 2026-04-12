@@ -95,7 +95,7 @@ export function useStreamResponse(
   setMessages: (updater: (prev: readonly Message[]) => readonly Message[]) => void,
   config: APIConfig,
   toolRegistry?: ToolRegistry,
-  toolContext?: ToolContext,
+  toolContext?: Partial<ToolContext>,
 ): UseStreamResponseReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
@@ -197,18 +197,27 @@ export function useStreamResponse(
               continue;
             }
 
-            const ctx: ToolContext = toolContext ?? {
-              workingDirectory: process.cwd(),
+            const ctx: ToolContext = {
+              workingDirectory: toolContext?.workingDirectory ?? process.cwd(),
               abortSignal: controller.signal,
             };
 
-            const result = await executeTool(toolRegistry, toolUse.name, toolUse.input, ctx);
-            toolResultBlocks.push({
-              type: "tool_result",
-              tool_use_id: toolUse.id,
-              content: result.output,
-              is_error: result.error,
-            });
+            try {
+              const result = await executeTool(toolRegistry, toolUse.name, toolUse.input, ctx);
+              toolResultBlocks.push({
+                type: "tool_result",
+                tool_use_id: toolUse.id,
+                content: result.output,
+                is_error: result.error,
+              });
+            } catch (err) {
+              toolResultBlocks.push({
+                type: "tool_result",
+                tool_use_id: toolUse.id,
+                content: err instanceof Error ? err.message : String(err),
+                is_error: true,
+              });
+            }
           }
 
           // Create user message with tool results

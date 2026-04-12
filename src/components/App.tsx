@@ -31,10 +31,9 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
 
   // Create tool registry once
   const toolRegistry = useMemo(() => createDefaultRegistry(), []);
-  const toolContext = useMemo<ToolContext>(
+  const toolContext = useMemo<Partial<ToolContext>>(
     () => ({
       workingDirectory: process.cwd(),
-      abortSignal: new AbortController().signal,
     }),
     [],
   );
