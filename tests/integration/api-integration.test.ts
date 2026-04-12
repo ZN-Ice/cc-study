@@ -115,5 +115,5 @@ describe.skipIf(!hasApiKey)("API Integration", () => {
     }
 
     console.log(`  Tool call events: ${blockStarts.length} blocks, stop_reason=tool_use`);
-  });
+  }, 15000);
 });
