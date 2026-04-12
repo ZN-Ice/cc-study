@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { BashTool } from "../../../src/tools/BashTool.js";
+import { ToolRegistry, executeTool } from "../../../src/tools/registry.js";
 import type { ToolContext } from "../../../src/tools/types.js";
 
 let tempDir: string;
@@ -13,6 +14,13 @@ const context: ToolContext = {
   workingDirectory: "",
   abortSignal: new AbortController().signal,
 };
+
+/** Run BashTool through the full lifecycle */
+async function runTool(input: Record<string, unknown>) {
+  const registry = new ToolRegistry();
+  registry.register(BashTool);
+  return executeTool(registry, "Bash", input, context);
+}
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "cc-study-test-"));
@@ -56,7 +64,7 @@ describe("BashTool", () => {
   });
 
   test("rejects empty command", async () => {
-    const result = await BashTool.execute({ command: "" }, context);
+    const result = await runTool({ command: "" });
     expect(result.error).toBe(true);
     expect(result.output).toContain("Empty");
   });

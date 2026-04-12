@@ -420,6 +420,48 @@
     "remark": "新增 2 个集成测试（tool_use 触发工具执行、工具结果回传），更新现有测试适配新事件格式，98/98 通过"
   },
   {
+    "task_id": "P2018",
+    "task_type": "功能开发",
+    "phase": "Phase 2",
+    "module": "tool",
+    "source_ref": "free-code/src/tools/",
+    "task_desc": "引入 Zod 替代手写 JSONSchema：用 z.strictObject 定义参数 Schema，消除手动类型转换样板代码，防止 LLM 幻觉参数",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-12 18:00:00",
+    "finish_time": "2026-04-12 19:50:00",
+    "check_result": "通过",
+    "remark": "6个工具全部替换为 Zod strictObject，Tool 接口改为 inputSchema: z.ZodType，Registry 通过 z.toJSONSchema 生成 API 定义，typecheck/lint/test 全通过"
+  },
+  {
+    "task_id": "P2019",
+    "task_type": "功能开发",
+    "phase": "Phase 2",
+    "module": "tool",
+    "source_ref": "free-code/src/tools/",
+    "task_desc": "为 Tool 接口添加 validateInput 生命周期方法：将验证逻辑从 execute 中分离，实现各工具的独立输入验证",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-12 18:00:00",
+    "finish_time": "2026-04-12 19:50:00",
+    "check_result": "通过",
+    "remark": "Tool 接口新增 validateInput，executeTool 三阶段：Zod parse → validateInput → execute。FileReadTool/FileEditTool 提取了语义验证到 validateInput"
+  },
+  {
+    "task_id": "P2020",
+    "task_type": "测试编写",
+    "phase": "Phase 2",
+    "module": "tool",
+    "source_ref": null,
+    "task_desc": "编写 Zod + validateInput 测试：Schema 验证、非法参数拒绝、各工具 validateInput 覆盖",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-12 18:00:00",
+    "finish_time": "2026-04-12 19:50:00",
+    "check_result": "通过",
+    "remark": "新增 zod-validation.test.ts 21个用例：strictObject 拒绝未知字段、类型校验、各工具 validateInput 语义验证、JSON Schema 转换，131个测试全部通过"
+  },
+  {
     "task_id": "P3001",
     "task_type": "源码研读",
     "phase": "Phase 3",
@@ -490,6 +532,20 @@
     "remark": "覆盖率目标：80%+"
   },
   {
+    "task_id": "P3006",
+    "task_type": "功能开发",
+    "phase": "Phase 3",
+    "module": "perm",
+    "source_ref": "free-code/src/tools/",
+    "task_desc": "为 Tool 接口添加 checkPermissions 方法：细粒度权限决策（allow/deny/ask），集成 isSearchOrReadCommand 用于差异化策略",
+    "executor": "Claude Code",
+    "status": "待执行",
+    "create_time": "2026-04-12 18:00:00",
+    "finish_time": null,
+    "check_result": null,
+    "remark": "参考 docs/user-study-note/phase2-tool-interface-analysis.md 差异1：三阶段生命周期 checkPermissions"
+  },
+  {
     "task_id": "P4001",
     "task_type": "源码研读",
     "phase": "Phase 4",
@@ -544,6 +600,20 @@
     "finish_time": null,
     "check_result": null,
     "remark": "覆盖率目标：70%+"
+  },
+  {
+    "task_id": "P4005",
+    "task_type": "功能开发",
+    "phase": "Phase 4",
+    "module": "agent",
+    "source_ref": "free-code/src/tools/",
+    "task_desc": "为 Tool 接口添加辅助能力方法：isReadOnly()、isConcurrencySafe()、getPath(input)，支持并行 Agent 执行时的并发控制和缓存策略",
+    "executor": "Claude Code",
+    "status": "待执行",
+    "create_time": "2026-04-12 18:00:00",
+    "finish_time": null,
+    "check_result": null,
+    "remark": "参考 docs/user-study-note/phase2-tool-interface-analysis.md 差异5：辅助能力缺失"
   },
   {
     "task_id": "P5001",
@@ -684,6 +754,20 @@
     "finish_time": null,
     "check_result": null,
     "remark": "记忆文件存储在 .claude/projects/ 目录下"
+  },
+  {
+    "task_id": "P6008",
+    "task_type": "功能开发",
+    "phase": "Phase 6",
+    "module": "cmd",
+    "source_ref": "free-code/src/tools/",
+    "task_desc": "为 Tool 接口添加 extractSearchText 方法：从工具执行结果中提取搜索文本，供上下文压缩（/compact）和结果索引使用",
+    "executor": "Claude Code",
+    "status": "待执行",
+    "create_time": "2026-04-12 18:00:00",
+    "finish_time": null,
+    "check_result": null,
+    "remark": "参考 docs/user-study-note/phase2-tool-interface-analysis.md §4.2：extractSearchText 详解"
   },
   {
     "task_id": "P6007",

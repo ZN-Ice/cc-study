@@ -4,7 +4,7 @@
  * Re-exports all types, the registry, and all tool implementations.
  */
 
-export type { Tool, ToolResult, ToolContext, JSONSchema, ToolDefinition } from "./types.js";
+export type { Tool, ToolResult, ToolContext, ValidationResult, ToolDefinition } from "./types.js";
 export { ToolRegistry, executeTool } from "./registry.js";
 export { FileReadTool } from "./FileReadTool.js";
 export { FileWriteTool } from "./FileWriteTool.js";

@@ -6,9 +6,19 @@
 
 import { readFile, stat } from "node:fs/promises";
 import { resolve, extname } from "node:path";
-import type { Tool, ToolResult, ToolContext } from "./types.js";
+import { z } from "zod";
+import type { Tool, ToolResult, ToolContext, ValidationResult } from "./types.js";
 
 const MAX_OUTPUT_SIZE = 256 * 1024; // 256KB
+
+/** Zod schema for FileReadTool parameters */
+const inputSchema = z.strictObject({
+  file_path: z.string().describe("The absolute path to the file to read"),
+  offset: z.number().optional().describe("The line number to start reading from (1-indexed, defaults to 1)"),
+  limit: z.number().optional().describe("The number of lines to read"),
+});
+
+type FileReadInput = z.infer<typeof inputSchema>;
 
 /** Add line numbers in cat -n format */
 function addLineNumbers(content: string, startLine: number): string {
@@ -33,7 +43,7 @@ function isBinaryExtension(ext: string): boolean {
   return binaryExtensions.has(ext.toLowerCase());
 }
 
-export const FileReadTool: Tool = {
+export const FileReadTool: Tool<typeof inputSchema> = {
   name: "Read",
   description:
     "Reads a file from the local filesystem. " +
@@ -42,70 +52,56 @@ export const FileReadTool: Tool = {
     "If the User provides a path to a file assume that path is valid. " +
     "It is okay to read a file that does not exist; an error will be returned.",
 
-  parameters: {
-    type: "object",
-    properties: {
-      file_path: {
-        type: "string",
-        description: "The absolute path to the file to read",
-      },
-      offset: {
-        type: "number",
-        description: "The line number to start reading from (1-indexed, defaults to 1)",
-      },
-      limit: {
-        type: "number",
-        description: "The number of lines to read",
-      },
-    },
-    required: ["file_path"],
-  },
+  inputSchema,
 
-  async execute(
-    params: Record<string, unknown>,
+  async validateInput(
+    input: FileReadInput,
     context: ToolContext,
-  ): Promise<ToolResult> {
-    const filePath = resolve(
-      context.workingDirectory,
-      String(params.file_path ?? ""),
-    );
-    const offset = Number(params.offset ?? 1);
-    const limit = params.limit != null ? Number(params.limit) : undefined;
+  ): Promise<ValidationResult> {
+    const filePath = resolve(context.workingDirectory, input.file_path);
 
     // Check extension for binary files
     const ext = extname(filePath);
     if (isBinaryExtension(ext)) {
       return {
-        output: `Error: Cannot read binary file (${ext}). Only text files are supported.`,
-        error: true,
+        ok: false,
+        error: `Error: Cannot read binary file (${ext}). Only text files are supported.`,
       };
     }
 
-    // Check file size
-    let fileSize: number;
+    // Check file existence and size
     try {
       const stats = await stat(filePath);
-      fileSize = stats.size;
+      if (stats.size > MAX_OUTPUT_SIZE && input.limit === undefined) {
+        return {
+          ok: false,
+          error: `Error: File content (${Math.round(stats.size / 1024)}KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions.`,
+        };
+      }
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === "ENOENT") {
-        return { output: `Error: File not found: ${filePath}`, error: true };
+        return { ok: false, error: `Error: File not found: ${filePath}` };
       }
       if (code === "EACCES") {
-        return { output: `Error: Permission denied: ${filePath}`, error: true };
+        return { ok: false, error: `Error: Permission denied: ${filePath}` };
       }
       return {
-        output: `Error: Cannot read file: ${(err as Error).message}`,
-        error: true,
+        ok: false,
+        error: `Error: Cannot read file: ${(err as Error).message}`,
       };
     }
 
-    if (fileSize > MAX_OUTPUT_SIZE && limit === undefined) {
-      return {
-        output: `Error: File content (${Math.round(fileSize / 1024)}KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions.`,
-        error: true,
-      };
-    }
+    return { ok: true };
+  },
+
+  async execute(
+    input: FileReadInput,
+    context: ToolContext,
+  ): Promise<ToolResult> {
+    const filePath = resolve(context.workingDirectory, input.file_path);
+    const offset = input.offset ?? 1;
+    const limit = input.limit;
 
     // Read file
     let content: string;

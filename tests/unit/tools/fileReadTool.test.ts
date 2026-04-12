@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { FileReadTool } from "../../../src/tools/FileReadTool.js";
+import { ToolRegistry, executeTool } from "../../../src/tools/registry.js";
 import type { ToolContext } from "../../../src/tools/types.js";
 
 let tempDir: string;
@@ -13,6 +14,13 @@ const context: ToolContext = {
   workingDirectory: "",
   abortSignal: new AbortController().signal,
 };
+
+/** Run FileReadTool through the full lifecycle (Zod parse → validateInput → execute) */
+async function runTool(input: Record<string, unknown>) {
+  const registry = new ToolRegistry();
+  registry.register(FileReadTool);
+  return executeTool(registry, "Read", input, context);
+}
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "cc-study-test-"));
@@ -37,10 +45,7 @@ describe("FileReadTool", () => {
   });
 
   test("returns error for non-existent file", async () => {
-    const result = await FileReadTool.execute(
-      { file_path: join(tempDir, "missing.txt") },
-      context,
-    );
+    const result = await runTool({ file_path: join(tempDir, "missing.txt") });
     expect(result.error).toBe(true);
     expect(result.output).toContain("not found");
   });
@@ -73,10 +78,7 @@ describe("FileReadTool", () => {
 
   test("rejects binary files", async () => {
     writeFileSync(join(tempDir, "test.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-    const result = await FileReadTool.execute(
-      { file_path: join(tempDir, "test.png") },
-      context,
-    );
+    const result = await runTool({ file_path: join(tempDir, "test.png") });
     expect(result.error).toBe(true);
     expect(result.output).toContain("binary");
   });
@@ -84,10 +86,7 @@ describe("FileReadTool", () => {
   test("rejects oversized files without limit", async () => {
     const bigContent = "x".repeat(300 * 1024); // 300KB
     writeFileSync(join(tempDir, "big.txt"), bigContent);
-    const result = await FileReadTool.execute(
-      { file_path: join(tempDir, "big.txt") },
-      context,
-    );
+    const result = await runTool({ file_path: join(tempDir, "big.txt") });
     expect(result.error).toBe(true);
     expect(result.output).toContain("exceeds maximum");
   });

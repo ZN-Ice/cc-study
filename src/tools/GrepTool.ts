@@ -9,9 +9,23 @@
 
 import { spawn } from "node:child_process";
 import { resolve, relative } from "node:path";
-import type { Tool, ToolResult, ToolContext } from "./types.js";
+import { z } from "zod";
+import type { Tool, ToolResult, ToolContext, ValidationResult } from "./types.js";
 
 const DEFAULT_HEAD_LIMIT = 250;
+
+/** Zod schema for GrepTool parameters */
+const inputSchema = z.strictObject({
+  pattern: z.string().describe("The regular expression pattern to search for"),
+  path: z.string().optional().describe("File or directory to search in. Defaults to current working directory."),
+  glob: z.string().optional().describe("Glob pattern to filter files (e.g. \"*.js\", \"*.{ts,tsx}\")"),
+  output_mode: z.enum(["content", "files_with_matches", "count"]).optional().describe("Output mode (default: \"files_with_matches\")"),
+  "-i": z.boolean().optional().describe("Case insensitive search"),
+  "-C": z.number().optional().describe("Number of lines of context before and after matches"),
+  head_limit: z.number().optional().describe("Limit output to first N lines/entries (default 250)"),
+});
+
+type GrepInput = z.infer<typeof inputSchema>;
 
 async function hasRipgrep(): Promise<boolean> {
   return new Promise((res) => {
@@ -21,79 +35,50 @@ async function hasRipgrep(): Promise<boolean> {
   });
 }
 
-export const GrepTool: Tool = {
+export const GrepTool: Tool<typeof inputSchema> = {
   name: "Grep",
   description:
     "Search file contents using regular expressions. " +
     "Supports output modes: content (show matching lines), files_with_matches (show file paths), count (show match counts). " +
     "Defaults to files_with_matches mode.",
 
-  parameters: {
-    type: "object",
-    properties: {
-      pattern: {
-        type: "string",
-        description: "The regular expression pattern to search for",
-      },
-      path: {
-        type: "string",
-        description: "File or directory to search in. Defaults to current working directory.",
-      },
-      glob: {
-        type: "string",
-        description: 'Glob pattern to filter files (e.g. "*.js", "*.{ts,tsx}")',
-      },
-      output_mode: {
-        type: "string",
-        enum: ["content", "files_with_matches", "count"],
-        description: 'Output mode (default: "files_with_matches")',
-      },
-      "-i": {
-        type: "boolean",
-        description: "Case insensitive search",
-      },
-      "-C": {
-        type: "number",
-        description: "Number of lines of context before and after matches",
-      },
-      head_limit: {
-        type: "number",
-        description: "Limit output to first N lines/entries (default 250)",
-      },
-    },
-    required: ["pattern"],
+  inputSchema,
+
+  async validateInput(
+    input: GrepInput,
+    _context: ToolContext,
+  ): Promise<ValidationResult> {
+    if (!input.pattern) {
+      return { ok: false, error: "Error: pattern is required" };
+    }
+    return { ok: true };
   },
 
   async execute(
-    params: Record<string, unknown>,
+    input: GrepInput,
     context: ToolContext,
   ): Promise<ToolResult> {
-    const pattern = String(params.pattern ?? "");
-    if (!pattern) {
-      return { output: "Error: pattern is required", error: true };
-    }
-
-    const searchPath = params.path
-      ? resolve(context.workingDirectory, String(params.path))
+    const searchPath = input.path
+      ? resolve(context.workingDirectory, input.path)
       : context.workingDirectory;
-    const outputMode = String(params.output_mode ?? "files_with_matches");
-    const caseInsensitive = Boolean(params["-i"]);
-    const contextLines = Number(params["-C"] ?? 0);
-    const globFilter = params.glob ? String(params.glob) : undefined;
-    const headLimit = Number(params.head_limit ?? DEFAULT_HEAD_LIMIT);
+    const outputMode = input.output_mode ?? "files_with_matches";
+    const caseInsensitive = input["-i"] ?? false;
+    const contextLines = input["-C"] ?? 0;
+    const globFilter = input.glob;
+    const headLimit = input.head_limit ?? DEFAULT_HEAD_LIMIT;
 
     // Try ripgrep first
     const rgAvailable = await hasRipgrep();
     if (rgAvailable) {
       return executeWithRipgrep(
-        pattern, searchPath, outputMode, caseInsensitive,
+        input.pattern, searchPath, outputMode, caseInsensitive,
         contextLines, globFilter, headLimit, context.workingDirectory,
       );
     }
 
     // Fallback: use grep command
     return executeWithGrep(
-      pattern, searchPath, outputMode, caseInsensitive,
+      input.pattern, searchPath, outputMode, caseInsensitive,
       contextLines, globFilter, headLimit, context.workingDirectory,
     );
   },

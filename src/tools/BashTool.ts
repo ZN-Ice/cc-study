@@ -5,51 +5,49 @@
  */
 
 import { spawn } from "node:child_process";
-import type { Tool, ToolResult, ToolContext } from "./types.js";
+import { z } from "zod";
+import type { Tool, ToolResult, ToolContext, ValidationResult } from "./types.js";
 
 const DEFAULT_TIMEOUT = 120_000; // 120 seconds
 
-export const BashTool: Tool = {
+/** Zod schema for BashTool parameters */
+const inputSchema = z.strictObject({
+  command: z.string().describe("The bash command to execute"),
+  timeout: z.number().optional().describe("Optional timeout in milliseconds (default 120000, max 600000)"),
+});
+
+type BashInput = z.infer<typeof inputSchema>;
+
+export const BashTool: Tool<typeof inputSchema> = {
   name: "Bash",
   description:
     "Executes a given bash command. " +
     "The command will run in a shell process with the working directory set to the project root. " +
     "Commands have a default timeout of 120 seconds. " +
-
     "IMPORTANT: Assist with authorized security testing, defensive security, CTF challenges, and educational contexts. " +
     "Refuse requests for destructive techniques, DoS attacks, mass targeting, supply chain compromise, " +
     "or detection evasion for malicious purposes.",
 
-  parameters: {
-    type: "object",
-    properties: {
-      command: {
-        type: "string",
-        description: "The bash command to execute",
-      },
-      timeout: {
-        type: "number",
-        description: "Optional timeout in milliseconds (default 120000, max 600000)",
-      },
-    },
-    required: ["command"],
-  },
+  inputSchema,
 
   requiresConfirmation: true,
 
+  async validateInput(
+    input: BashInput,
+    _context: ToolContext,
+  ): Promise<ValidationResult> {
+    if (!input.command.trim()) {
+      return { ok: false, error: "Error: Empty command" };
+    }
+    return { ok: true };
+  },
+
   async execute(
-    params: Record<string, unknown>,
+    input: BashInput,
     context: ToolContext,
   ): Promise<ToolResult> {
-    const command = String(params.command ?? "");
-    if (!command.trim()) {
-      return { output: "Error: Empty command", error: true };
-    }
-
-    const timeout = Math.min(
-      Number(params.timeout ?? DEFAULT_TIMEOUT),
-      600_000,
-    );
+    const command = input.command;
+    const timeout = Math.min(input.timeout ?? DEFAULT_TIMEOUT, 600_000);
 
     return new Promise((resolveResult) => {
       let stdout = "";

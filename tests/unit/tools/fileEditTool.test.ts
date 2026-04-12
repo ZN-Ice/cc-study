@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { FileEditTool } from "../../../src/tools/FileEditTool.js";
+import { ToolRegistry, executeTool } from "../../../src/tools/registry.js";
 import type { ToolContext } from "../../../src/tools/types.js";
 
 let tempDir: string;
@@ -13,6 +14,13 @@ const context: ToolContext = {
   workingDirectory: "",
   abortSignal: new AbortController().signal,
 };
+
+/** Run FileEditTool through the full lifecycle */
+async function runTool(input: Record<string, unknown>) {
+  const registry = new ToolRegistry();
+  registry.register(FileEditTool);
+  return executeTool(registry, "Edit", input, context);
+}
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "cc-study-test-"));
@@ -37,9 +45,8 @@ describe("FileEditTool", () => {
 
   test("rejects identical old_string and new_string", async () => {
     writeFileSync(join(tempDir, "test.txt"), "hello");
-    const result = await FileEditTool.execute(
+    const result = await runTool(
       { file_path: join(tempDir, "test.txt"), old_string: "hello", new_string: "hello" },
-      context,
     );
     expect(result.error).toBe(true);
     expect(result.output).toContain("identical");
@@ -47,9 +54,8 @@ describe("FileEditTool", () => {
 
   test("rejects non-unique old_string without replace_all", async () => {
     writeFileSync(join(tempDir, "test.txt"), "foo bar foo baz foo");
-    const result = await FileEditTool.execute(
+    const result = await runTool(
       { file_path: join(tempDir, "test.txt"), old_string: "foo", new_string: "qux" },
-      context,
     );
     expect(result.error).toBe(true);
     expect(result.output).toContain("3 matches");
@@ -86,9 +92,8 @@ describe("FileEditTool", () => {
 
   test("rejects creating file when file exists and non-empty", async () => {
     writeFileSync(join(tempDir, "test.txt"), "existing content");
-    const result = await FileEditTool.execute(
+    const result = await runTool(
       { file_path: join(tempDir, "test.txt"), old_string: "", new_string: "new" },
-      context,
     );
     expect(result.error).toBe(true);
     expect(result.output).toContain("already exists");
@@ -116,9 +121,8 @@ describe("FileEditTool", () => {
   });
 
   test("returns error for non-existent file", async () => {
-    const result = await FileEditTool.execute(
+    const result = await runTool(
       { file_path: join(tempDir, "missing.txt"), old_string: "x", new_string: "y" },
-      context,
     );
     expect(result.error).toBe(true);
     expect(result.output).toContain("not found");

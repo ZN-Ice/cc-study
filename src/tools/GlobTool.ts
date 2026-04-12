@@ -7,11 +7,20 @@
 import { resolve, relative } from "node:path";
 import { stat } from "node:fs/promises";
 import fg from "fast-glob";
-import type { Tool, ToolResult, ToolContext } from "./types.js";
+import { z } from "zod";
+import type { Tool, ToolResult, ToolContext, ValidationResult } from "./types.js";
 
 const MAX_RESULTS = 100;
 
-export const GlobTool: Tool = {
+/** Zod schema for GlobTool parameters */
+const inputSchema = z.strictObject({
+  pattern: z.string().describe("The glob pattern to match files against"),
+  path: z.string().optional().describe("The directory to search in. Defaults to current working directory."),
+});
+
+type GlobInput = z.infer<typeof inputSchema>;
+
+export const GlobTool: Tool<typeof inputSchema> = {
   name: "Glob",
   description:
     "Fast file pattern matching tool that works with any codebase size. " +
@@ -19,36 +28,28 @@ export const GlobTool: Tool = {
     "Returns matching file paths sorted by modification time. " +
     "Defaults to the current working directory.",
 
-  parameters: {
-    type: "object",
-    properties: {
-      pattern: {
-        type: "string",
-        description: "The glob pattern to match files against",
-      },
-      path: {
-        type: "string",
-        description: "The directory to search in. Defaults to current working directory.",
-      },
-    },
-    required: ["pattern"],
+  inputSchema,
+
+  async validateInput(
+    input: GlobInput,
+    _context: ToolContext,
+  ): Promise<ValidationResult> {
+    if (!input.pattern) {
+      return { ok: false, error: "Error: pattern is required" };
+    }
+    return { ok: true };
   },
 
   async execute(
-    params: Record<string, unknown>,
+    input: GlobInput,
     context: ToolContext,
   ): Promise<ToolResult> {
-    const pattern = String(params.pattern ?? "");
-    if (!pattern) {
-      return { output: "Error: pattern is required", error: true };
-    }
-
-    const searchDir = params.path
-      ? resolve(context.workingDirectory, String(params.path))
+    const searchDir = input.path
+      ? resolve(context.workingDirectory, input.path)
       : context.workingDirectory;
 
     try {
-      const files = await fg(pattern, {
+      const files = await fg(input.pattern, {
         cwd: searchDir,
         absolute: true,
         ignore: ["**/node_modules/**", "**/.git/**"],
@@ -83,7 +84,7 @@ export const GlobTool: Tool = {
 
       let output = relativePaths.join("\n");
       if (truncated) {
-        output += `\n\n(Results are truncated. Consider using a more specific path or pattern.)`;
+        output += "\n\n(Results are truncated. Consider using a more specific path or pattern.)";
       }
 
       return { output };

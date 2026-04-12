@@ -6,9 +6,18 @@
 
 import { writeFile, mkdir, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import type { Tool, ToolResult, ToolContext } from "./types.js";
+import { z } from "zod";
+import type { Tool, ToolResult, ToolContext, ValidationResult } from "./types.js";
 
-export const FileWriteTool: Tool = {
+/** Zod schema for FileWriteTool parameters */
+const inputSchema = z.strictObject({
+  file_path: z.string().describe("The absolute path to the file to write (must be absolute, not relative)"),
+  content: z.string().describe("The content to write to the file"),
+});
+
+type FileWriteInput = z.infer<typeof inputSchema>;
+
+export const FileWriteTool: Tool<typeof inputSchema> = {
   name: "Write",
   description:
     "Writes a file to the local filesystem. " +
@@ -16,36 +25,23 @@ export const FileWriteTool: Tool = {
     "If this is an existing file, you MUST use the Read tool first to read the file's contents. " +
     "This tool will fail if you did not read the file first.",
 
-  parameters: {
-    type: "object",
-    properties: {
-      file_path: {
-        type: "string",
-        description: "The absolute path to the file to write (must be absolute, not relative)",
-      },
-      content: {
-        type: "string",
-        description: "The content to write to the file",
-      },
-    },
-    required: ["file_path", "content"],
-  },
+  inputSchema,
 
   requiresConfirmation: true,
 
+  async validateInput(
+    _input: FileWriteInput,
+    _context: ToolContext,
+  ): Promise<ValidationResult> {
+    return { ok: true };
+  },
+
   async execute(
-    params: Record<string, unknown>,
+    input: FileWriteInput,
     context: ToolContext,
   ): Promise<ToolResult> {
-    const filePath = resolve(
-      context.workingDirectory,
-      String(params.file_path ?? ""),
-    );
-    const content = String(params.content ?? "");
-
-    if (!params.file_path) {
-      return { output: "Error: file_path is required", error: true };
-    }
+    const filePath = resolve(context.workingDirectory, input.file_path);
+    const content = input.content;
 
     // Ensure parent directory exists
     const dir = dirname(filePath);
@@ -67,7 +63,7 @@ export const FileWriteTool: Tool = {
       // File doesn't exist - creating new
     }
 
-    // Write file (atomic: write to tmp then rename)
+    // Write file
     try {
       await writeFile(filePath, content, "utf-8");
     } catch (err) {

@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { GrepTool } from "../../../src/tools/GrepTool.js";
+import { ToolRegistry, executeTool } from "../../../src/tools/registry.js";
 import type { ToolContext } from "../../../src/tools/types.js";
 
 let tempDir: string;
@@ -13,6 +14,13 @@ const context: ToolContext = {
   workingDirectory: "",
   abortSignal: new AbortController().signal,
 };
+
+/** Run GrepTool through the full lifecycle */
+async function runTool(input: Record<string, unknown>) {
+  const registry = new ToolRegistry();
+  registry.register(GrepTool);
+  return executeTool(registry, "Grep", input, context);
+}
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "cc-study-test-"));
@@ -55,7 +63,7 @@ describe("GrepTool", () => {
   });
 
   test("requires pattern parameter", async () => {
-    const result = await GrepTool.execute({ pattern: "" }, context);
+    const result = await runTool({ pattern: "" });
     expect(result.error).toBe(true);
   });
 

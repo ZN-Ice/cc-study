@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { FileWriteTool } from "../../../src/tools/FileWriteTool.js";
+import { ToolRegistry, executeTool } from "../../../src/tools/registry.js";
 import type { ToolContext } from "../../../src/tools/types.js";
 
 let tempDir: string;
@@ -13,6 +14,13 @@ const context: ToolContext = {
   workingDirectory: "",
   abortSignal: new AbortController().signal,
 };
+
+/** Run FileWriteTool through the full lifecycle */
+async function runTool(input: Record<string, unknown>) {
+  const registry = new ToolRegistry();
+  registry.register(FileWriteTool);
+  return executeTool(registry, "Write", input, context);
+}
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "cc-study-test-"));
@@ -55,12 +63,9 @@ describe("FileWriteTool", () => {
   });
 
   test("requires file_path parameter", async () => {
-    const result = await FileWriteTool.execute(
-      { content: "test" },
-      context,
-    );
+    const result = await runTool({ content: "test" });
     expect(result.error).toBe(true);
-    expect(result.output).toContain("required");
+    expect(result.output).toContain("Invalid parameters");
   });
 
   test("writes empty content", async () => {
