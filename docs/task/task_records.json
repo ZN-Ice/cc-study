@@ -392,6 +392,34 @@
     "remark": "编写 7 个测试文件共 46 个测试用例：registry(5) fileRead(8) fileWrite(6) fileEdit(10) bash(7) glob(5) grep(5)，工具覆盖率 80%+，96个测试全部通过"
   },
   {
+    "task_id": "P2016",
+    "task_type": "功能开发",
+    "phase": "Phase 2",
+    "module": "tool",
+    "source_ref": null,
+    "task_desc": "将工具系统集成到 REPL 主循环：api.ts 传递 tools 参数、useStreamResponse 处理 tool_use 事件、执行工具、回传 tool_result、循环直到 end_turn",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-12 09:30:00",
+    "finish_time": "2026-04-12 09:40:00",
+    "check_result": "通过",
+    "remark": "已集成工具系统到 REPL：api.ts 传递 tools 参数、useStreamResponse 处理 tool_use/tool_result 循环、App.tsx 传入 ToolRegistry，98 个测试全部通过"
+  },
+  {
+    "task_id": "P2017",
+    "task_type": "测试编写",
+    "phase": "Phase 2",
+    "module": "tool",
+    "source_ref": null,
+    "task_desc": "编写工具-REPL集成测试：tool_use 处理、tool_result 创建、多轮工具调用、错误处理",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-12 09:30:00",
+    "finish_time": "2026-04-12 09:40:00",
+    "check_result": "通过",
+    "remark": "新增 2 个集成测试（tool_use 触发工具执行、工具结果回传），更新现有测试适配新事件格式，98/98 通过"
+  },
+  {
     "task_id": "P3001",
     "task_type": "源码研读",
     "phase": "Phase 3",

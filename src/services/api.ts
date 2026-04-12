@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Message } from "../messages.js";
 import { normalizeForAPI } from "../messages.js";
+import type { ToolDefinition } from "../tools/types.js";
 
 // ──────────────────────────────────────────────
 // Types
@@ -14,6 +15,7 @@ export interface APIConfig {
   readonly maxTokens: number;
   readonly systemPrompt: string;
   readonly temperature: number;
+  readonly tools?: readonly ToolDefinition[];
 }
 
 export interface MessageStartEvent {
@@ -24,13 +26,23 @@ export interface MessageStartEvent {
 export interface ContentBlockStartEvent {
   readonly type: "content_block_start";
   readonly index: number;
-  readonly content_block: { readonly type: string; readonly text?: string };
+  readonly content_block: {
+    readonly type: string;
+    readonly text?: string;
+    readonly id?: string;
+    readonly name?: string;
+    readonly input?: Record<string, unknown>;
+  };
 }
 
 export interface ContentBlockDeltaEvent {
   readonly type: "content_block_delta";
   readonly index: number;
-  readonly delta: { readonly type: string; readonly text?: string };
+  readonly delta: {
+    readonly type: string;
+    readonly text?: string;
+    readonly partial_json?: string;
+  };
 }
 
 export interface ContentBlockStopEvent {
@@ -163,7 +175,7 @@ export async function* streamChat(
   config: APIConfig,
   signal: AbortSignal,
 ): AsyncGenerator<StreamEvent, void> {
-  const body = {
+  const body: Record<string, unknown> = {
     model: config.model,
     max_tokens: config.maxTokens,
     temperature: config.temperature,
@@ -171,6 +183,10 @@ export async function* streamChat(
     messages: normalizeForAPI(messages),
     stream: true,
   };
+
+  if (config.tools && config.tools.length > 0) {
+    body.tools = config.tools;
+  }
 
   const response = await fetch(ANTHROPIC_API_URL, {
     method: "POST",
