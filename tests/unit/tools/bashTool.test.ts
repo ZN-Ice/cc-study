@@ -63,7 +63,7 @@ describe("BashTool", () => {
 
   test("times out with custom timeout", async () => {
     const result = await BashTool.execute(
-      { command: "sleep 10", timeout: 500 },
+      { command: "sleep 1", timeout: 50 },
       context,
     );
     expect(result.error).toBe(true);
@@ -74,9 +74,9 @@ describe("BashTool", () => {
     const controller = new AbortController();
     const ctx = { ...context, abortSignal: controller.signal };
 
-    const promise = BashTool.execute({ command: "sleep 10" }, ctx);
+    const promise = BashTool.execute({ command: "sleep 1" }, ctx);
     // Abort after a short delay
-    setTimeout(() => controller.abort(), 100);
+    setTimeout(() => controller.abort(), 50);
 
     const result = await promise;
     expect(result.error).toBe(true);
