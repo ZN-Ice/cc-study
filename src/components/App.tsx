@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import type { Message } from "../messages.js";
 import { PromptInput } from "./PromptInput.js";
@@ -11,6 +11,8 @@ import type { APIConfig } from "../services/api.js";
 import { resolveApiKey } from "../services/api.js";
 import { twoPressReducer } from "../utils/twoPressExit.js";
 import type { TwoPressExitState } from "../utils/twoPressExit.js";
+import { createDefaultRegistry } from "../tools/index.js";
+import type { ToolContext } from "../tools/types.js";
 
 interface AppProps {
   readonly model: string;
@@ -27,16 +29,26 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
   });
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Create tool registry once
+  const toolRegistry = useMemo(() => createDefaultRegistry(), []);
+  const toolContext = useMemo<Partial<ToolContext>>(
+    () => ({
+      workingDirectory: process.cwd(),
+    }),
+    [],
+  );
+
   const apiConfig: APIConfig = {
     apiKey: apiKey ?? resolveApiKey(),
     model,
     maxTokens: DEFAULT_API_CONFIG.maxTokens,
     systemPrompt: SYSTEM_PROMPT,
     temperature: DEFAULT_API_CONFIG.temperature,
+    tools: toolRegistry.getToolDefinitions(),
   };
 
   const { isLoading, streamingText, sendMessage, cancel, error } =
-    useStreamResponse(messages, setMessages, apiConfig);
+    useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext);
 
   const requestExit = useCallback(() => {
     const result = twoPressReducer(exitState, "press");

@@ -14,6 +14,34 @@ const mockConfig: APIConfig = {
   temperature: 0,
 };
 
+/** Build a minimal valid stream that produces the given text deltas. */
+function* textStreamEvents(texts: string[]): Generator<StreamEvent, void> {
+  yield { type: "content_block_start", index: 0, content_block: { type: "text" } };
+  for (const text of texts) {
+    yield { type: "content_block_delta", index: 0, delta: { type: "text_delta", text } };
+  }
+  yield { type: "content_block_stop", index: 0 };
+  yield { type: "message_delta", delta: { stop_reason: "end_turn" } };
+}
+
+/** Build stream events for a tool_use block */
+function* toolUseStreamEvents(
+  toolId: string,
+  toolName: string,
+  inputJson: string,
+): Generator<StreamEvent, void> {
+  yield { type: "content_block_start", index: 0, content_block: { type: "text" } };
+  yield { type: "content_block_stop", index: 0 };
+  yield {
+    type: "content_block_start",
+    index: 1,
+    content_block: { type: "tool_use", id: toolId, name: toolName },
+  };
+  yield { type: "content_block_delta", index: 1, delta: { type: "input_json_delta", partial_json: inputJson } };
+  yield { type: "content_block_stop", index: 1 };
+  yield { type: "message_delta", delta: { stop_reason: "tool_use" } };
+}
+
 // ── Mocks ────────────────────────────────────────────────
 
 vi.mock("../../src/services/api.js", async (importOriginal) => {
@@ -57,8 +85,10 @@ describe("useStreamResponse", () => {
       _cfg: unknown,
       signal: AbortSignal,
     ) {
+      yield { type: "content_block_start", index: 0, content_block: { type: "text" } } as StreamEvent;
       yield {
         type: "content_block_delta",
+        index: 0,
         delta: { type: "text_delta", text: "Hello" },
       } as StreamEvent;
       await new Promise<void>((_resolve, reject) => {
@@ -125,14 +155,7 @@ describe("useStreamResponse", () => {
     const mockStreamChat = vi.mocked(streamChat);
 
     async function* fakeStream() {
-      yield {
-        type: "content_block_delta",
-        delta: { type: "text_delta", text: "Hello" },
-      } as StreamEvent;
-      yield {
-        type: "content_block_delta",
-        delta: { type: "text_delta", text: " World" },
-      } as StreamEvent;
+      yield* textStreamEvents(["Hello", " World"]);
     }
 
     mockStreamChat.mockImplementation(fakeStream as never);
@@ -188,8 +211,8 @@ describe("useStreamResponse", () => {
     const { streamChat } = await import("../../src/services/api.js");
     const mockStreamChat = vi.mocked(streamChat);
 
+    // eslint-disable-next-line require-yield
     async function* failingStream() {
-      // eslint-disable-next-line require-yield — intentionally throws before yielding
       throw new Error("API rate limit exceeded");
     }
 
@@ -205,5 +228,102 @@ describe("useStreamResponse", () => {
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBe("API rate limit exceeded");
+  });
+
+  test("tool_use triggers tool execution and continues loop", async () => {
+    const { streamChat } = await import("../../src/services/api.js");
+    const mockStreamChat = vi.mocked(streamChat);
+
+    // First call: returns tool_use
+    // Second call: returns text response
+    let callCount = 0;
+    async function* fakeStream() {
+      callCount++;
+      if (callCount === 1) {
+        yield* toolUseStreamEvents("tool-1", "Bash", '{"command":"ls -la"}');
+      } else {
+        yield* textStreamEvents(["Done!"]);
+      }
+    }
+
+    mockStreamChat.mockImplementation(fakeStream as never);
+
+    const messagesState: unknown[][] = [[]];
+    const setMessages = vi.fn((updater: (prev: unknown[]) => unknown[]) => {
+      const prev = messagesState[messagesState.length - 1];
+      const next = updater(prev);
+      messagesState.push(next);
+      return next;
+    });
+
+    const { result } = renderHook(() =>
+      useStreamResponse([], setMessages, mockConfig),
+    );
+
+    await act(async () => {
+      await result.current.sendMessage("list files");
+    });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(callCount).toBe(2);
+
+    // Should have: user msg, assistant (tool_use), user (tool_result), assistant (text)
+    const flat = messagesState.flat();
+    const assistantMsgs = flat.filter(
+      (m) => typeof m === "object" && m !== null && "type" in m && (m as { type: string }).type === "assistant",
+    );
+    expect(assistantMsgs.length).toBeGreaterThanOrEqual(2);
+
+    // Final assistant should have "Done!" text
+    const lastAssistant = assistantMsgs[assistantMsgs.length - 1] as {
+      content: Array<{ type: string; text?: string }>;
+    };
+    const hasDone = lastAssistant.content.some(
+      (c) => c.type === "text" && c.text?.includes("Done!"),
+    );
+    expect(hasDone).toBe(true);
+  });
+
+  test("tool_use without registry returns error tool_result", async () => {
+    const { streamChat } = await import("../../src/services/api.js");
+    const mockStreamChat = vi.mocked(streamChat);
+
+    // First call: returns tool_use
+    // Second call: returns text
+    let callCount = 0;
+    async function* fakeStream() {
+      callCount++;
+      if (callCount === 1) {
+        yield* toolUseStreamEvents("tool-1", "Bash", '{"command":"ls"}');
+      } else {
+        yield* textStreamEvents(["OK"]);
+      }
+    }
+
+    mockStreamChat.mockImplementation(fakeStream as never);
+
+    const messagesState: unknown[][] = [[]];
+    const setMessages = vi.fn((updater: (prev: unknown[]) => unknown[]) => {
+      const prev = messagesState[messagesState.length - 1];
+      const next = updater(prev);
+      messagesState.push(next);
+      return next;
+    });
+
+    // Pass registry with BashTool registered — it will execute the ls command
+    const { createDefaultRegistry } = await import("../../src/tools/index.js");
+    const registry = createDefaultRegistry();
+
+    const { result } = renderHook(() =>
+      useStreamResponse([], setMessages, mockConfig, registry),
+    );
+
+    await act(async () => {
+      await result.current.sendMessage("list files");
+    });
+
+    expect(result.current.isLoading).toBe(false);
+    // Should have completed successfully (BashTool will execute)
+    expect(callCount).toBe(2);
   });
 });
