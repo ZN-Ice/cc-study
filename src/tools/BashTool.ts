@@ -42,6 +42,16 @@ export const BashTool: Tool<typeof inputSchema> = {
     return { ok: true };
   },
 
+  isSearchOrReadCommand(input: BashInput): {
+    isSearch: boolean;
+    isRead: boolean;
+  } {
+    const cmd = input.command?.toLowerCase() ?? "";
+    const isSearch = /^(grep|rg|ag|ack)\b/.test(cmd);
+    const isRead = /^(cat|less|more|head|tail|ls|find)\b/.test(cmd);
+    return { isSearch, isRead };
+  },
+
   async execute(
     input: BashInput,
     context: ToolContext,

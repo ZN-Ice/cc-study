@@ -54,6 +54,13 @@ export const GrepTool: Tool<typeof inputSchema> = {
     return { ok: true };
   },
 
+  isSearchOrReadCommand(_input: GrepInput): {
+    isSearch: boolean;
+    isRead: boolean;
+  } {
+    return { isSearch: true, isRead: false };
+  },
+
   async execute(
     input: GrepInput,
     context: ToolContext,

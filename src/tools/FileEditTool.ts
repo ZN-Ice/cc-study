@@ -126,6 +126,13 @@ export const FileEditTool: Tool<typeof inputSchema> = {
     return { ok: true };
   },
 
+  isSearchOrReadCommand(_input: FileEditInput): {
+    isSearch: boolean;
+    isRead: boolean;
+  } {
+    return { isSearch: false, isRead: false };
+  },
+
   async execute(
     input: FileEditInput,
     context: ToolContext,

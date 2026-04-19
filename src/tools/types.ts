@@ -8,6 +8,7 @@
  */
 
 import { z } from "zod";
+import type { PermissionDecision, ToolPermissionContext } from "../permissions/types.js";
 
 // ──────────────────────────────────────────────
 // Validation Result
@@ -72,6 +73,27 @@ export interface Tool<T extends z.ZodType = z.ZodType> {
     input: z.infer<T>,
     context: ToolContext,
   ): Promise<ValidationResult>;
+
+  /**
+   * Permission check (optional, defaults to passthrough).
+   * Runs AFTER validateInput, BEFORE execute.
+   * Return { behavior: 'deny' } to block, { behavior: 'ask' } for user prompt,
+   * { behavior: 'allow' } to auto-approve.
+   */
+  checkPermissions?(
+    input: z.infer<T>,
+    context: ToolContext,
+    permContext: ToolPermissionContext,
+  ): Promise<PermissionDecision>;
+
+  /**
+   * Classify whether this tool invocation is a search or read operation.
+   * Used by plan mode to auto-approve read-only operations.
+   */
+  isSearchOrReadCommand?(input: z.infer<T>): {
+    isSearch: boolean;
+    isRead: boolean;
+  };
 
   /** Execute the tool with typed, validated parameters */
   execute(

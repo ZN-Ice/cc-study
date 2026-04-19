@@ -469,11 +469,11 @@
     "source_ref": "free-code/src/permissions.ts",
     "task_desc": "研读权限系统：权限模型（allow/deny/ask）、规则定义、配置格式",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 PermissionMode 和规则匹配的优先级链"
+    "finish_time": "2026-04-19 16:32:00",
+    "check_result": "通过",
+    "remark": "已研读权限三态决策链、规则匹配优先级、配置持久化格式、isSearchOrReadCommand，笔记记录到 docs/notes/phase3-permissions.md"
   },
   {
     "task_id": "P3002",
@@ -483,11 +483,11 @@
     "source_ref": "free-code/src/hooks/useCanUseTool.ts",
     "task_desc": "研读权限检查 Hook：useCanUseTool 的调用时机、规则匹配、用户交互",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 Hook 如何与权限管理器交互"
+    "finish_time": "2026-04-19 16:32:00",
+    "check_result": "通过",
+    "remark": "已研读 useCanUseTool 权限检查协调器、7阶段决策链、权限组件映射、规则管理组件"
   },
   {
     "task_id": "P3003",
@@ -497,11 +497,11 @@
     "source_ref": "free-code/src/permissions.ts",
     "task_desc": "编写权限系统设计文档：权限模型、规则引擎、配置格式、UI 交互",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "输出到 docs/design/phase3-permissions.md"
+    "finish_time": "2026-04-19 16:33:00",
+    "check_result": "通过",
+    "remark": "输出到 docs/design/phase3-permissions.md，含类型定义、核心模块、7步决策链、规则匹配算法、配置格式、测试规划"
   },
   {
     "task_id": "P3004",
@@ -511,11 +511,11 @@
     "source_ref": null,
     "task_desc": "实现权限系统：PermissionManager、规则引擎、权限确认 UI、规则持久化",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "支持 Y/N/Always 三种确认选项"
+    "finish_time": "2026-04-19 16:35:00",
+    "check_result": "通过",
+    "remark": "实现 src/permissions/ 模块：types.ts类型定义、rules.ts规则匹配引擎、manager.ts权限管理器，支持7步决策链、3种权限模式、内容匹配、配置加载"
   },
   {
     "task_id": "P3005",
@@ -525,11 +525,11 @@
     "source_ref": null,
     "task_desc": "编写权限系统单元测试：规则匹配、优先级、持久化、边界条件",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "覆盖率目标：80%+"
+    "finish_time": "2026-04-19 16:35:00",
+    "check_result": "通过",
+    "remark": "编写 2 个测试文件共 49 个测试用例：rules.test.ts(21) manager.test.ts(28)，权限模块覆盖率 99.09%，180个测试全部通过"
   },
   {
     "task_id": "P3006",
@@ -539,11 +539,11 @@
     "source_ref": "free-code/src/tools/",
     "task_desc": "为 Tool 接口添加 checkPermissions 方法：细粒度权限决策（allow/deny/ask），集成 isSearchOrReadCommand 用于差异化策略",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-12 18:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "参考 docs/user-study-note/phase2-tool-interface-analysis.md 差异1：三阶段生命周期 checkPermissions"
+    "finish_time": "2026-04-19 16:36:00",
+    "check_result": "通过",
+    "remark": "Tool 接口新增 checkPermissions 和 isSearchOrReadCommand 可选方法，6个工具全部实现 isSearchOrReadCommand，typecheck/lint/test 全通过"
   },
   {
     "task_id": "P4001",

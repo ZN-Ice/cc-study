@@ -40,6 +40,13 @@ export const GlobTool: Tool<typeof inputSchema> = {
     return { ok: true };
   },
 
+  isSearchOrReadCommand(_input: GlobInput): {
+    isSearch: boolean;
+    isRead: boolean;
+  } {
+    return { isSearch: true, isRead: false };
+  },
+
   async execute(
     input: GlobInput,
     context: ToolContext,

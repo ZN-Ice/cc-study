@@ -95,6 +95,13 @@ export const FileReadTool: Tool<typeof inputSchema> = {
     return { ok: true };
   },
 
+  isSearchOrReadCommand(_input: FileReadInput): {
+    isSearch: boolean;
+    isRead: boolean;
+  } {
+    return { isSearch: false, isRead: true };
+  },
+
   async execute(
     input: FileReadInput,
     context: ToolContext,
