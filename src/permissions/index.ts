@@ -24,3 +24,8 @@ export {
   getAskRuleForTool,
   getAllowRuleForTool,
 } from "./rules.js";
+
+export {
+  loadPermissionConfigFromFile,
+  savePermissionRule,
+} from "./config.js";

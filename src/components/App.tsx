@@ -13,6 +13,8 @@ import { twoPressReducer } from "../utils/twoPressExit.js";
 import type { TwoPressExitState } from "../utils/twoPressExit.js";
 import { createDefaultRegistry } from "../tools/index.js";
 import type { ToolContext } from "../tools/types.js";
+import { PermissionManager } from "../permissions/manager.js";
+import { PermissionConfirm } from "./PermissionConfirm.js";
 
 interface AppProps {
   readonly model: string;
@@ -31,6 +33,8 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
 
   // Create tool registry once
   const toolRegistry = useMemo(() => createDefaultRegistry(), []);
+  // Create permission manager once
+  const permissionManager = useMemo(() => new PermissionManager(), []);
   const toolContext = useMemo<Partial<ToolContext>>(
     () => ({
       workingDirectory: process.cwd(),
@@ -47,8 +51,8 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     tools: toolRegistry.getToolDefinitions(),
   };
 
-  const { isLoading, streamingText, sendMessage, cancel, error } =
-    useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext);
+  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission } =
+    useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);
 
   const requestExit = useCallback(() => {
     const result = twoPressReducer(exitState, "press");
@@ -116,8 +120,18 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       )}
 
       {/* Loading spinner */}
-      {isLoading && !streamingText && <Spinner mode="thinking" />}
-      {isLoading && streamingText && <Spinner mode="responding" />}
+      {isLoading && !streamingText && !permissionRequest && <Spinner mode="thinking" />}
+      {isLoading && streamingText && !permissionRequest && <Spinner mode="responding" />}
+
+      {/* Permission confirmation dialog */}
+      {permissionRequest && (
+        <Box marginTop={1}>
+          <PermissionConfirm
+            request={permissionRequest}
+            onRespond={respondToPermission}
+          />
+        </Box>
+      )}
 
       {/* Input */}
       <Box marginTop={1}>
