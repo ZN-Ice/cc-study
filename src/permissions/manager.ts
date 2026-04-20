@@ -211,7 +211,8 @@ export class PermissionManager {
  *   "Read(*.md)"      → { toolName: "Read", ruleContent: "*.md" }
  */
 export function parseRuleString(ruleStr: string): PermissionRuleValue {
-  const match = ruleStr.match(/^(\w+)\((.+)\)$/);
+  // Match: "ToolName(pattern)" — tool name can contain word chars, hyphens, dots, underscores
+  const match = ruleStr.match(/^([^()]+)\((.+)\)$/);
   if (match) {
     return { toolName: match[1], ruleContent: match[2] };
   }

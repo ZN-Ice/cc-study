@@ -129,16 +129,24 @@ export function useStreamResponse(
   /** onPermissionAsk callback for executeToolWithPermissions */
   const onPermissionAsk = useCallback(
     async (decision: PermissionDecision): Promise<{ allowed: boolean; alwaysAllow: boolean }> => {
-      // Extract relevant content from decision
-      const toolName = decision.reason &&
-        "toolCheck" in decision.reason ? (decision.reason as { toolName: string }).toolName : "";
-      const content = decision.message;
+      // Safely extract toolName from decision.reason
+      let toolName = "Unknown";
+      if (
+        decision.reason != null &&
+        typeof decision.reason === "object" &&
+        "type" in decision.reason
+      ) {
+        const reason = decision.reason as { type: string; toolName?: string };
+        if ("toolName" in reason && typeof reason.toolName === "string") {
+          toolName = reason.toolName;
+        }
+      }
 
       return new Promise((resolve) => {
         permissionResolveRef.current = resolve;
         setPermissionRequest({
-          toolName: toolName || "Unknown",
-          message: content,
+          toolName,
+          message: decision.message,
         });
       });
     },

@@ -219,12 +219,25 @@ export async function executeToolWithPermissions(
       };
     }
 
-    // "Always allow" — add a session rule
+    // "Always allow" — add a session rule preserving content pattern if available
     if (userResponse.alwaysAllow) {
+      const ruleValue: { toolName: string; ruleContent?: string } = { toolName: name };
+      // If the decision came from a content-specific rule, preserve the pattern
+      if (
+        decision.reason &&
+        typeof decision.reason === "object" &&
+        "type" in decision.reason &&
+        decision.reason.type === "rule"
+      ) {
+        const rule = (decision.reason as { type: string; rule: { value: { ruleContent?: string } } }).rule;
+        if (rule?.value?.ruleContent) {
+          ruleValue.ruleContent = rule.value.ruleContent;
+        }
+      }
       permissionManager.addRule({
         source: "session",
         behavior: "allow",
-        value: { toolName: name },
+        value: ruleValue,
       });
     }
   }

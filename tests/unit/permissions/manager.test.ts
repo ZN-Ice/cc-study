@@ -372,4 +372,20 @@ describe("parseRuleString", () => {
       ruleContent: undefined,
     });
   });
+
+  test("parses MCP tool name with double underscores", async () => {
+    const { parseRuleString } = await import("../../../src/permissions/manager.js");
+    expect(parseRuleString("mcp__server1__tool1")).toEqual({
+      toolName: "mcp__server1__tool1",
+      ruleContent: undefined,
+    });
+  });
+
+  test("parses MCP tool name with content pattern", async () => {
+    const { parseRuleString } = await import("../../../src/permissions/manager.js");
+    expect(parseRuleString("mcp__server1__tool1(some-pattern)")).toEqual({
+      toolName: "mcp__server1__tool1",
+      ruleContent: "some-pattern",
+    });
+  });
 });
