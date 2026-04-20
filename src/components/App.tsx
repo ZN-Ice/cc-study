@@ -33,8 +33,14 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
 
   // Create tool registry once
   const toolRegistry = useMemo(() => createDefaultRegistry(), []);
-  // Create permission manager once
-  const permissionManager = useMemo(() => new PermissionManager(), []);
+  // Create permission manager with default rules (allow read-only, ask for writes/bash)
+  const permissionManager = useMemo(() => {
+    const pm = new PermissionManager();
+    pm.loadFromConfig({
+      allow: ["Read", "Glob", "Grep"],
+    }, "session");
+    return pm;
+  }, []);
   const toolContext = useMemo<Partial<ToolContext>>(
     () => ({
       workingDirectory: process.cwd(),
