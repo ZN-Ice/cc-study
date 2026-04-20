@@ -2,7 +2,7 @@
  * PermissionConfirm - Interactive permission confirmation UI.
  *
  * Displays when a tool requires user approval (ask decision).
- * Options: [Y]es (once), [A]lways allow, [N]o (deny).
+ * Navigate with Up/Down arrows, confirm with Enter.
  */
 
 import React, { useState } from "react";
@@ -15,6 +15,18 @@ export interface PermissionRequest {
   content?: string;
 }
 
+interface Option {
+  label: string;
+  allowed: boolean;
+  alwaysAllow: boolean;
+}
+
+const OPTIONS: Option[] = [
+  { label: "Yes (this time only)", allowed: true, alwaysAllow: false },
+  { label: "Always allow", allowed: true, alwaysAllow: true },
+  { label: "No (deny)", allowed: false, alwaysAllow: false },
+];
+
 interface PermissionConfirmProps {
   request: PermissionRequest;
   onRespond: (allowed: boolean, alwaysAllow: boolean) => void;
@@ -24,21 +36,20 @@ export const PermissionConfirm: React.FC<PermissionConfirmProps> = ({
   request,
   onRespond,
 }) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [answered, setAnswered] = useState(false);
 
-  useInput((input) => {
+  useInput((_input, key) => {
     if (answered) return;
 
-    const key = input.toLowerCase();
-    if (key === "y") {
+    if (key.upArrow) {
+      setSelectedIndex((i) => (i - 1 + OPTIONS.length) % OPTIONS.length);
+    } else if (key.downArrow) {
+      setSelectedIndex((i) => (i + 1) % OPTIONS.length);
+    } else if (key.return) {
+      const opt = OPTIONS[selectedIndex];
       setAnswered(true);
-      onRespond(true, false);
-    } else if (key === "a") {
-      setAnswered(true);
-      onRespond(true, true);
-    } else if (key === "n") {
-      setAnswered(true);
-      onRespond(false, false);
+      onRespond(opt.allowed, opt.alwaysAllow);
     }
   });
 
@@ -60,14 +71,28 @@ export const PermissionConfirm: React.FC<PermissionConfirmProps> = ({
       {request.message && (
         <Text dimColor>{request.message}</Text>
       )}
-      {!answered ? (
+      <Box flexDirection="column" marginTop={1}>
+        {OPTIONS.map((opt, i) => {
+          const isSelected = i === selectedIndex && !answered;
+          const color = i === 2 ? "red" : i === 1 ? "green" : undefined;
+
+          return (
+            <Box key={i}>
+              <Text>{isSelected ? "❯ " : "  "}</Text>
+              <Text
+                bold={isSelected}
+                color={isSelected ? "cyan" : color}
+              >
+                {opt.label}
+              </Text>
+            </Box>
+          );
+        })}
+      </Box>
+      {!answered && (
         <Box marginTop={1}>
-          <Text>[Y]es </Text>
-          <Text color="green">[A]lways allow </Text>
-          <Text color="red">[N]o</Text>
+          <Text dimColor>↑↓ navigate · Enter confirm</Text>
         </Box>
-      ) : (
-        <Text dimColor>Responded.</Text>
       )}
     </Box>
   );
