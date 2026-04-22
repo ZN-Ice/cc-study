@@ -57,7 +57,7 @@ export const BashTool: Tool<typeof inputSchema> = {
     input: BashInput,
     _context: ToolContext,
     _permContext: ToolPermissionContext,
-  ): Promise<PermissionDecision> {
+  ): Promise<PermissionDecision | undefined> {
     const cmd = input.command.trim();
 
     // Block commands that are always dangerous
