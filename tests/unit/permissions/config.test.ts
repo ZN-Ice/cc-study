@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import {
   loadPermissionConfigFromFile,
   savePermissionRule,
+  getProjectSettingsPath,
 } from "../../../src/permissions/config.js";
 
 let testDir: string;
@@ -140,5 +141,23 @@ describe("savePermissionRule", () => {
 
     const raw = JSON.parse(await readFile(configPath, "utf-8"));
     expect(raw.permissions.allow).toEqual(["Read"]);
+  });
+});
+
+// ──────────────────────────────────────────────
+// getProjectSettingsPath
+// ──────────────────────────────────────────────
+
+describe("getProjectSettingsPath", () => {
+  test("returns .claude/settings.json under working directory", () => {
+    const path = getProjectSettingsPath("/home/user/project");
+    expect(path).toBe("/home/user/project/.claude/settings.json");
+  });
+
+  test("handles working directory with trailing slash", () => {
+    const path = getProjectSettingsPath("/home/user/project/");
+    // join normalizes trailing slashes
+    expect(path).toContain(".claude/settings.json");
+    expect(path).toMatch(/\/project\/\.claude\/settings\.json$/);
   });
 });

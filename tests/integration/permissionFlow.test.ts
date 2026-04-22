@@ -9,7 +9,7 @@
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { ToolContext } from "../../src/tools/types.js";
@@ -289,5 +289,58 @@ describe("Permission integration", () => {
     );
     expect(grepResult.output).toContain("test.txt");
     expect(grepResult.error).toBeFalsy();
+  });
+
+  // ── Always-allow persistence ─────────────────────────────────
+
+  test("always-allow persists rule to .claude/settings.json", async () => {
+    const s = await setupPermissionTest("default");
+    tmpDirs.push(s.tmpDir);
+
+    const onAsk = vi.fn(async () => ({ allowed: true, alwaysAllow: true }));
+
+    const result = await s.executeToolWithPermissions(
+      s.registry, "Bash", { command: "echo persisted" }, s.ctx, s.pm, onAsk,
+    );
+
+    expect(result.output).toContain("persisted");
+
+    // Wait for fire-and-forget write to complete
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Check that .claude/settings.json was created with the rule
+    const settingsPath = join(s.tmpDir, ".claude", "settings.json");
+    const raw = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    expect(raw.permissions.allow).toBeDefined();
+    expect(raw.permissions.allow).toContain("Bash");
+  });
+
+  test("always-allow with ruleContent persists pattern to file", async () => {
+    const s = await setupPermissionTest("default");
+    tmpDirs.push(s.tmpDir);
+
+    // Mock pm.check to return ask with content-specific rule reason
+    const contentRule = {
+      source: "userSettings",
+      behavior: "ask" as const,
+      value: { toolName: "Bash", ruleContent: "git*" },
+    };
+
+    vi.spyOn(s.pm, "check").mockResolvedValue({
+      behavior: "ask",
+      message: "Requires permission",
+      reason: { type: "rule", rule: contentRule },
+    });
+
+    const onAsk = vi.fn(async () => ({ allowed: true, alwaysAllow: true }));
+    await s.executeToolWithPermissions(
+      s.registry, "Bash", { command: "git status" }, s.ctx, s.pm, onAsk,
+    );
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const settingsPath = join(s.tmpDir, ".claude", "settings.json");
+    const raw = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    expect(raw.permissions.allow).toContain("Bash(git*)");
   });
 });

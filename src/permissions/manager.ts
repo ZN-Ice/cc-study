@@ -28,6 +28,7 @@ import {
   getAllowRuleForTool,
   contentMatchesRule,
 } from "./rules.js";
+import { loadPermissionConfigFromFile } from "./config.js";
 
 export class PermissionManager {
   private context: ToolPermissionContext;
@@ -85,6 +86,22 @@ export class PermissionManager {
     for (const str of config.ask ?? []) {
       const value = parseRuleString(str);
       this.addRule({ source, behavior: "ask", value });
+    }
+  }
+
+  /**
+   * Load rules from a settings.json file on disk.
+   *
+   * Combines loadPermissionConfigFromFile + loadFromConfig.
+   * No-op if the file doesn't exist or has no permissions key.
+   */
+  async loadFromSettingsFile(
+    filePath: string,
+    source: PermissionRule["source"] = "projectSettings",
+  ): Promise<void> {
+    const config = await loadPermissionConfigFromFile(filePath);
+    if (Object.keys(config).length > 0) {
+      this.loadFromConfig(config, source);
     }
   }
 

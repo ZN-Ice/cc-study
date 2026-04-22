@@ -5,7 +5,7 @@
  */
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import type { PermissionConfig, PermissionRuleValue, PermissionBehavior } from "./types.js";
 
 /**
@@ -33,6 +33,13 @@ function formatRuleString(value: PermissionRuleValue): string {
     return `${value.toolName}(${value.ruleContent})`;
   }
   return value.toolName;
+}
+
+/**
+ * Get the project-level settings.json path for a given working directory.
+ */
+export function getProjectSettingsPath(workingDirectory: string): string {
+  return join(workingDirectory, ".claude", "settings.json");
 }
 
 /**

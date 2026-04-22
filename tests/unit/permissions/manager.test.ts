@@ -4,11 +4,14 @@
  * Tests for: check(), addRule(), loadFromConfig(), getContext().
  */
 
-import { describe, test, expect, vi } from "vitest";
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import type { PermissionConfig } from "../../../src/permissions/types.js";
 import { PermissionManager } from "../../../src/permissions/manager.js";
 import type { Tool, ToolContext } from "../../../src/tools/types.js";
 import { z } from "zod";
+import { mkdir, writeFile, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -387,5 +390,83 @@ describe("parseRuleString", () => {
       toolName: "mcp__server1__tool1",
       ruleContent: "some-pattern",
     });
+  });
+});
+
+// ──────────────────────────────────────────────
+// loadFromSettingsFile
+// ──────────────────────────────────────────────
+
+describe("PermissionManager.loadFromSettingsFile", () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(tmpdir(), `cc-study-pm-file-${Date.now()}`);
+    await mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true });
+  });
+
+  test("loads rules from settings.json file", async () => {
+    const configPath = join(testDir, "settings.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        permissions: {
+          allow: ["Bash(npm test*)"],
+          deny: ["Bash(rm*)"],
+        },
+      }),
+    );
+
+    const pm = new PermissionManager();
+    await pm.loadFromSettingsFile(configPath);
+
+    expect(pm.getContext().allowRules).toHaveLength(1);
+    expect(pm.getContext().allowRules[0].value.toolName).toBe("Bash");
+    expect(pm.getContext().allowRules[0].value.ruleContent).toBe("npm test*");
+    expect(pm.getContext().denyRules).toHaveLength(1);
+    expect(pm.getContext().denyRules[0].source).toBe("projectSettings");
+  });
+
+  test("no-op when file does not exist", async () => {
+    const pm = new PermissionManager();
+    await pm.loadFromSettingsFile(join(testDir, "missing.json"));
+    expect(pm.getContext().allowRules).toHaveLength(0);
+  });
+
+  test("no-op when file has no permissions key", async () => {
+    const configPath = join(testDir, "settings.json");
+    await writeFile(configPath, JSON.stringify({ other: true }));
+
+    const pm = new PermissionManager();
+    await pm.loadFromSettingsFile(configPath);
+    expect(pm.getContext().allowRules).toHaveLength(0);
+  });
+
+  test("uses custom source when provided", async () => {
+    const configPath = join(testDir, "settings.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({ permissions: { allow: ["Read"] } }),
+    );
+
+    const pm = new PermissionManager();
+    await pm.loadFromSettingsFile(configPath, "userSettings");
+    expect(pm.getContext().allowRules[0].source).toBe("userSettings");
+  });
+
+  test("loads mode from file", async () => {
+    const configPath = join(testDir, "settings.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({ permissions: { mode: "bypassPermissions" } }),
+    );
+
+    const pm = new PermissionManager();
+    await pm.loadFromSettingsFile(configPath);
+    expect(pm.getContext().mode).toBe("bypassPermissions");
   });
 });

@@ -28,4 +28,5 @@ export {
 export {
   loadPermissionConfigFromFile,
   savePermissionRule,
+  getProjectSettingsPath,
 } from "./config.js";

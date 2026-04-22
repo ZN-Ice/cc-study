@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import type { Message } from "../messages.js";
 import { PromptInput } from "./PromptInput.js";
@@ -14,6 +14,7 @@ import type { TwoPressExitState } from "../utils/twoPressExit.js";
 import { createDefaultRegistry } from "../tools/index.js";
 import type { ToolContext } from "../tools/types.js";
 import { PermissionManager } from "../permissions/manager.js";
+import { getProjectSettingsPath } from "../permissions/config.js";
 import { PermissionConfirm } from "./PermissionConfirm.js";
 
 interface AppProps {
@@ -41,6 +42,14 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     }, "session");
     return pm;
   }, []);
+
+  // Load project-level .claude/settings.json on startup
+  useEffect(() => {
+    const projectSettingsPath = getProjectSettingsPath(process.cwd());
+    permissionManager.loadFromSettingsFile(projectSettingsPath).catch(() => {
+      // File doesn't exist or is invalid — fine, use defaults
+    });
+  }, [permissionManager]);
   const toolContext = useMemo<Partial<ToolContext>>(
     () => ({
       workingDirectory: process.cwd(),

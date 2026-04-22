@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { Tool, ToolDefinition, ToolResult, ToolContext } from "./types.js";
 import type { PermissionManager } from "../permissions/manager.js";
 import type { PermissionDecision } from "../permissions/types.js";
+import { savePermissionRule, getProjectSettingsPath } from "../permissions/config.js";
 
 export class ToolRegistry {
   private readonly tools = new Map<string, Tool>();
@@ -239,6 +240,11 @@ export async function executeToolWithPermissions(
         behavior: "allow",
         value: ruleValue,
       });
+
+      // Persist to project-level .claude/settings.json (fire-and-forget)
+      const settingsPath = getProjectSettingsPath(context.workingDirectory);
+      savePermissionRule(settingsPath, { behavior: "allow", value: ruleValue })
+        .catch(() => { /* 静默失败，不影响执行 */ });
     }
   }
 
