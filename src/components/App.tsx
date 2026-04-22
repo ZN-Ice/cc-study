@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import type { Message } from "../messages.js";
 import { PromptInput } from "./PromptInput.js";
@@ -13,6 +13,9 @@ import { twoPressReducer } from "../utils/twoPressExit.js";
 import type { TwoPressExitState } from "../utils/twoPressExit.js";
 import { createDefaultRegistry } from "../tools/index.js";
 import type { ToolContext } from "../tools/types.js";
+import { PermissionManager } from "../permissions/manager.js";
+import { getProjectSettingsPath } from "../permissions/config.js";
+import { PermissionConfirm } from "./PermissionConfirm.js";
 
 interface AppProps {
   readonly model: string;
@@ -31,6 +34,22 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
 
   // Create tool registry once
   const toolRegistry = useMemo(() => createDefaultRegistry(), []);
+  // Create permission manager with default rules (allow read-only, ask for writes/bash)
+  const permissionManager = useMemo(() => {
+    const pm = new PermissionManager();
+    pm.loadFromConfig({
+      allow: ["Read", "Glob", "Grep"],
+    }, "session");
+    return pm;
+  }, []);
+
+  // Load project-level .claude/settings.json on startup
+  useEffect(() => {
+    const projectSettingsPath = getProjectSettingsPath(process.cwd());
+    permissionManager.loadFromSettingsFile(projectSettingsPath).catch(() => {
+      // File doesn't exist or is invalid — fine, use defaults
+    });
+  }, [permissionManager]);
   const toolContext = useMemo<Partial<ToolContext>>(
     () => ({
       workingDirectory: process.cwd(),
@@ -47,8 +66,8 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     tools: toolRegistry.getToolDefinitions(),
   };
 
-  const { isLoading, streamingText, sendMessage, cancel, error } =
-    useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext);
+  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission } =
+    useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);
 
   const requestExit = useCallback(() => {
     const result = twoPressReducer(exitState, "press");
@@ -116,8 +135,18 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       )}
 
       {/* Loading spinner */}
-      {isLoading && !streamingText && <Spinner mode="thinking" />}
-      {isLoading && streamingText && <Spinner mode="responding" />}
+      {isLoading && !streamingText && !permissionRequest && <Spinner mode="thinking" />}
+      {isLoading && streamingText && !permissionRequest && <Spinner mode="responding" />}
+
+      {/* Permission confirmation dialog */}
+      {permissionRequest && (
+        <Box marginTop={1}>
+          <PermissionConfirm
+            request={permissionRequest}
+            onRespond={respondToPermission}
+          />
+        </Box>
+      )}
 
       {/* Input */}
       <Box marginTop={1}>

@@ -5,7 +5,8 @@
  */
 
 export type { Tool, ToolResult, ToolContext, ValidationResult, ToolDefinition } from "./types.js";
-export { ToolRegistry, executeTool } from "./registry.js";
+export { ToolRegistry, executeTool, executeToolWithPermissions } from "./registry.js";
+export type { OnPermissionAsk } from "./registry.js";
 export { FileReadTool } from "./FileReadTool.js";
 export { FileWriteTool } from "./FileWriteTool.js";
 export { FileEditTool } from "./FileEditTool.js";

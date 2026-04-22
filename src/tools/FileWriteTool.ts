@@ -36,6 +36,13 @@ export const FileWriteTool: Tool<typeof inputSchema> = {
     return { ok: true };
   },
 
+  isSearchOrReadCommand(_input: FileWriteInput): {
+    isSearch: boolean;
+    isRead: boolean;
+  } {
+    return { isSearch: false, isRead: false };
+  },
+
   async execute(
     input: FileWriteInput,
     context: ToolContext,

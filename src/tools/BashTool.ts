@@ -7,6 +7,7 @@
 import { spawn } from "node:child_process";
 import { z } from "zod";
 import type { Tool, ToolResult, ToolContext, ValidationResult } from "./types.js";
+import type { PermissionDecision, ToolPermissionContext } from "../permissions/types.js";
 
 const DEFAULT_TIMEOUT = 120_000; // 120 seconds
 
@@ -40,6 +41,81 @@ export const BashTool: Tool<typeof inputSchema> = {
       return { ok: false, error: "Error: Empty command" };
     }
     return { ok: true };
+  },
+
+  isSearchOrReadCommand(input: BashInput): {
+    isSearch: boolean;
+    isRead: boolean;
+  } {
+    const cmd = input.command?.toLowerCase() ?? "";
+    const isSearch = /^(grep|rg|ag|ack)\b/.test(cmd);
+    const isRead = /^(cat|less|more|head|tail|ls|find)\b/.test(cmd);
+    return { isSearch, isRead };
+  },
+
+  async checkPermissions(
+    input: BashInput,
+    _context: ToolContext,
+    _permContext: ToolPermissionContext,
+  ): Promise<PermissionDecision | undefined> {
+    const cmd = input.command.trim();
+
+    // Block commands that are always dangerous
+    // Check for: rm with -r/-f/--recursive/--force flags targeting / or *
+    const isDestructiveRm = (() => {
+      if (!cmd.startsWith("rm")) return false;
+      const hasRecurse = /(-\w*[rf]\w*[rf]\w*|--recursive)/.test(cmd);
+      const targetsRoot = /\s\/\s*$/.test(cmd) || /\s\/\s+/.test(cmd) || /\s\*\s*$/.test(cmd);
+      return hasRecurse && targetsRoot;
+    })();
+
+    if (isDestructiveRm) {
+      return {
+        behavior: "deny",
+        message: `Command blocked for safety: "${cmd.slice(0, 80)}"`,
+        reason: { type: "safetyCheck", reason: "destructive rm command" },
+      };
+    }
+
+    const alwaysBlockPatterns = [
+      /^mkfs\b/,                                       // format filesystem
+      /^dd\s+.*of=\/dev\//,                            // write to block device
+      /^:\(\)\{\s*:\|:\s*&\s*\}/,                      // fork bomb
+    ];
+
+    for (const pattern of alwaysBlockPatterns) {
+      if (pattern.test(cmd)) {
+        return {
+          behavior: "deny",
+          message: `Command blocked for safety: "${cmd.slice(0, 80)}"`,
+          reason: { type: "safetyCheck", reason: "destructive command" },
+        };
+      }
+    }
+
+    // Commands that always require explicit permission
+    const askPatterns = [
+      /\bsudo\b/,          // sudo
+      /\bchmod\s+([0-7]{3,4})\s+/,  // chmod with octal
+      /\bchown\b/,         // chown
+      /\bshutdown\b/,      // shutdown
+      /\breboot\b/,        // reboot
+    ];
+
+    for (const pattern of askPatterns) {
+      if (pattern.test(cmd)) {
+        return {
+          behavior: "ask",
+          message: `Potentially sensitive command requires confirmation: "${cmd.slice(0, 80)}"`,
+          reason: { type: "safetyCheck", reason: "sensitive command" },
+        };
+      }
+    }
+
+    // Default: no opinion — let the PermissionManager decision chain continue.
+    // Returning undefined (instead of { behavior: "allow" }) ensures the
+    // normal rule/mode/default-ask flow is respected for ordinary commands.
+    return undefined;
   },
 
   async execute(

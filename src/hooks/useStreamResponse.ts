@@ -3,7 +3,10 @@ import type { Message, AssistantMessage, ToolUseBlock, ContentBlock } from "../m
 import { createUserMessage, createAssistantMessage } from "../messages.js";
 import { streamChat, type APIConfig, type StreamEvent } from "../services/api.js";
 import type { ToolRegistry, ToolContext } from "../tools/index.js";
-import { executeTool } from "../tools/index.js";
+import { executeTool, executeToolWithPermissions } from "../tools/index.js";
+import type { PermissionManager } from "../permissions/manager.js";
+import type { PermissionDecision } from "../permissions/types.js";
+import type { PermissionRequest } from "../components/PermissionConfirm.js";
 
 interface UseStreamResponseReturn {
   readonly isLoading: boolean;
@@ -11,6 +14,10 @@ interface UseStreamResponseReturn {
   readonly sendMessage: (content: string) => Promise<void>;
   readonly cancel: () => void;
   readonly error: string | null;
+  /** Current permission request awaiting user response, or null */
+  readonly permissionRequest: PermissionRequest | null;
+  /** Callback to respond to a permission request */
+  readonly respondToPermission: (allowed: boolean, alwaysAllow: boolean) => void;
 }
 
 /**
@@ -96,13 +103,55 @@ export function useStreamResponse(
   config: APIConfig,
   toolRegistry?: ToolRegistry,
   toolContext?: Partial<ToolContext>,
+  permissionManager?: PermissionManager,
 ): UseStreamResponseReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
+  const permissionResolveRef = useRef<((result: { allowed: boolean; alwaysAllow: boolean }) => void) | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+
+  /** User responds to a permission prompt from the UI */
+  const respondToPermission = useCallback(
+    (allowed: boolean, alwaysAllow: boolean) => {
+      if (permissionResolveRef.current) {
+        permissionResolveRef.current({ allowed, alwaysAllow });
+        permissionResolveRef.current = null;
+      }
+      setPermissionRequest(null);
+    },
+    [],
+  );
+
+  /** onPermissionAsk callback for executeToolWithPermissions */
+  const onPermissionAsk = useCallback(
+    async (decision: PermissionDecision): Promise<{ allowed: boolean; alwaysAllow: boolean }> => {
+      // Safely extract toolName from decision.reason
+      let toolName = "Unknown";
+      if (
+        decision.reason != null &&
+        typeof decision.reason === "object" &&
+        "type" in decision.reason
+      ) {
+        const reason = decision.reason as { type: string; toolName?: string };
+        if ("toolName" in reason && typeof reason.toolName === "string") {
+          toolName = reason.toolName;
+        }
+      }
+
+      return new Promise((resolve) => {
+        permissionResolveRef.current = resolve;
+        setPermissionRequest({
+          toolName,
+          message: decision.message,
+        });
+      });
+    },
+    [],
+  );
 
   const cancel = useCallback(() => {
     abortControllerRef.current?.abort("user-cancel");
@@ -203,7 +252,12 @@ export function useStreamResponse(
             };
 
             try {
-              const result = await executeTool(toolRegistry, toolUse.name, toolUse.input, ctx);
+              const result = permissionManager
+                ? await executeToolWithPermissions(
+                    toolRegistry, toolUse.name, toolUse.input, ctx,
+                    permissionManager, onPermissionAsk,
+                  )
+                : await executeTool(toolRegistry, toolUse.name, toolUse.input, ctx);
               toolResultBlocks.push({
                 type: "tool_result",
                 tool_use_id: toolUse.id,
@@ -244,5 +298,5 @@ export function useStreamResponse(
     [config, setMessages, toolRegistry, toolContext],
   );
 
-  return { isLoading, streamingText, sendMessage, cancel, error };
+  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission };
 }
