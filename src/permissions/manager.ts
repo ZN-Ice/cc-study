@@ -145,13 +145,11 @@ export class PermissionManager {
         toolContext,
         this.context,
       );
-      if (
-        toolDecision.behavior === "deny" ||
-        toolDecision.behavior === "ask"
-      ) {
+      // undefined / void → tool has no opinion; continue to next steps
+      if (toolDecision && (toolDecision.behavior === "deny" || toolDecision.behavior === "ask")) {
         return toolDecision;
       }
-      if (toolDecision.behavior === "allow") {
+      if (toolDecision && toolDecision.behavior === "allow") {
         return {
           behavior: "allow",
           reason: { type: "toolCheck", toolName },

@@ -78,13 +78,15 @@ export interface Tool<T extends z.ZodType = z.ZodType> {
    * Permission check (optional, defaults to passthrough).
    * Runs AFTER validateInput, BEFORE execute.
    * Return { behavior: 'deny' } to block, { behavior: 'ask' } for user prompt,
-   * { behavior: 'allow' } to auto-approve.
+   * or undefined to let the decision chain continue (passthrough).
+   * Do NOT return { behavior: 'allow' } for normal cases — that short-circuits
+   * the default "ask" behavior. Only tools with inherent safety should return allow.
    */
   checkPermissions?(
     input: z.infer<T>,
     context: ToolContext,
     permContext: ToolPermissionContext,
-  ): Promise<PermissionDecision>;
+  ): Promise<PermissionDecision | undefined>;
 
   /**
    * Classify whether this tool invocation is a search or read operation.

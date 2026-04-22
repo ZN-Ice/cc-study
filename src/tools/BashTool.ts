@@ -112,8 +112,10 @@ export const BashTool: Tool<typeof inputSchema> = {
       }
     }
 
-    // Default: passthrough (let PermissionManager decide via rules)
-    return { behavior: "allow" };
+    // Default: no opinion — let the PermissionManager decision chain continue.
+    // Returning undefined (instead of { behavior: "allow" }) ensures the
+    // normal rule/mode/default-ask flow is respected for ordinary commands.
+    return undefined;
   },
 
   async execute(
