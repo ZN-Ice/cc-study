@@ -1,8 +1,6 @@
 import React, { useCallback, useState, useMemo, useRef, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import { CommandSelector, resolveCommandFilter } from "./CommandSelector.js";
-import { findCommand } from "../commands/index.js";
-import type { SubCommand } from "../commands/types.js";
 
 interface PromptInputProps {
   readonly value: string;

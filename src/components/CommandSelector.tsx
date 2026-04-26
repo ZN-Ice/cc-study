@@ -54,7 +54,6 @@ export function resolveCommandFilter(filter: string): CommandSelectorResult {
 
   // Walk through filter parts to find the target sub-command level
   let currentSubs = cmd.subCommands;
-  let currentCmd: { subCommands?: SubCommand[] } = cmd;
   let depth = 0;
 
   for (let i = 1; i < parts.length; i++) {
@@ -63,7 +62,6 @@ export function resolveCommandFilter(filter: string): CommandSelectorResult {
 
     if (matched?.subCommands && matched.subCommands.length > 0) {
       currentSubs = matched.subCommands;
-      currentCmd = matched;
       depth = i;
     } else {
       const filtered = currentSubs.filter(
