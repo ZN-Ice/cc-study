@@ -9,8 +9,8 @@ import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 
 /** MCP Server configuration for stdio transport */
-export interface McpServerConfig {
-  /** Transport type (currently only stdio supported) */
+export interface McpStdioConfig {
+  /** Transport type (optional, defaults to stdio) */
   type?: "stdio";
   /** Command to execute */
   command: string;
@@ -19,6 +19,27 @@ export interface McpServerConfig {
   /** Environment variables */
   env?: Record<string, string>;
 }
+
+/** MCP Server configuration for SSE transport */
+export interface McpSSEConfig {
+  type: "sse";
+  /** SSE endpoint URL */
+  url: string;
+  /** Additional HTTP headers */
+  headers?: Record<string, string>;
+}
+
+/** MCP Server configuration for Streamable HTTP transport */
+export interface McpHTTPConfig {
+  type: "http";
+  /** HTTP endpoint URL */
+  url: string;
+  /** Additional HTTP headers */
+  headers?: Record<string, string>;
+}
+
+/** Union of all supported MCP server configs */
+export type McpServerConfig = McpStdioConfig | McpSSEConfig | McpHTTPConfig;
 
 /** .mcp.json file format */
 export interface McpConfigFile {

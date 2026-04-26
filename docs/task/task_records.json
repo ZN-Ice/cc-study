@@ -1006,5 +1006,33 @@
     "finish_time": null,
     "check_result": null,
     "remark": "覆盖率目标：80%+。Mock 文件系统和 API，不依赖真实 Skill 文件"
+  },
+  {
+    "task_id": "P5010",
+    "task_type": "功能开发",
+    "phase": "Phase 5",
+    "module": "mcp",
+    "source_ref": "free-code/src/services/mcp/client.ts",
+    "task_desc": "扩展 MCP 传输层：支持 SSE 和 Streamable HTTP 传输，扩展 McpServerConfig 类型（sse/http + url + headers），McpClientManager.connect() 根据类型选择 Transport",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 19:00:00",
+    "finish_time": "2026-04-26 19:30:00",
+    "check_result": "通过",
+    "remark": "McpServerConfig 扩展为联合类型（stdio/sse/http），McpClientManager.createTransport() 按类型选择 Transport，448个测试通过，typecheck/lint/build全通过"
+  },
+  {
+    "task_id": "P5011",
+    "task_type": "测试编写",
+    "phase": "Phase 5",
+    "module": "mcp",
+    "source_ref": null,
+    "task_desc": "编写 SSE/HTTP 传输测试：配置解析、Transport 选择逻辑、连接/断开、工具发现与调用",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 19:00:00",
+    "finish_time": "2026-04-26 19:30:00",
+    "check_result": "通过",
+    "remark": "新增 mcpTransport.test.ts 共 16 个测试用例：配置解析(4) + Transport选择(8) + 工具操作(4)，与 P5010 合并提交"
   }
 ]

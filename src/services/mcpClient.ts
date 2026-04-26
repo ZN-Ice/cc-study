@@ -1,5 +1,5 @@
 /**
- * MCP Client Manager — connects to MCP servers via stdio transport,
+ * MCP Client Manager — connects to MCP servers via stdio/SSE/HTTP transport,
  * discovers tools, and calls them via JSON-RPC.
  *
  * Reference: free-code/src/services/mcp/client.ts
@@ -7,6 +7,9 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { VERSION } from "../constants/version.js";
 import type { McpServerConfig } from "./mcpConfig.js";
 
@@ -40,19 +43,14 @@ export class McpClientManager {
   private connections = new Map<string, McpConnection>();
 
   /**
-   * Connect to an MCP server via stdio transport.
+   * Connect to an MCP server via the configured transport.
    */
   async connect(name: string, config: McpServerConfig): Promise<void> {
     if (this.connections.has(name)) {
       return; // Already connected
     }
 
-    const transport = new StdioClientTransport({
-      command: config.command,
-      args: config.args ?? [],
-      env: { ...process.env, ...config.env } as Record<string, string>,
-      stderr: "pipe",
-    });
+    const transport = this.createTransport(config);
 
     const client = new Client(
       { name: "cc-study", version: VERSION },
@@ -62,6 +60,44 @@ export class McpClientManager {
     await client.connect(transport);
 
     this.connections.set(name, { client, serverName: name });
+  }
+
+  /**
+   * Create the appropriate transport based on config type.
+   */
+  private createTransport(config: McpServerConfig): Transport {
+    const configType = (config as { type?: string }).type;
+
+    switch (configType) {
+      case "sse": {
+        const sseConfig = config as { url: string; headers?: Record<string, string> };
+        if (!sseConfig.url) throw new Error("SSE config requires 'url'");
+        return new SSEClientTransport(new URL(sseConfig.url), {
+          requestInit: {
+            headers: { ...sseConfig.headers },
+          },
+        });
+      }
+      case "http": {
+        const httpConfig = config as { url: string; headers?: Record<string, string> };
+        if (!httpConfig.url) throw new Error("HTTP config requires 'url'");
+        return new StreamableHTTPClientTransport(new URL(httpConfig.url), {
+          requestInit: {
+            headers: { ...httpConfig.headers },
+          },
+        });
+      }
+      default: {
+        // stdio (default)
+        const stdioConfig = config as { command: string; args?: string[]; env?: Record<string, string> };
+        return new StdioClientTransport({
+          command: stdioConfig.command,
+          args: stdioConfig.args ?? [],
+          env: { ...process.env, ...stdioConfig.env } as Record<string, string>,
+          stderr: "pipe",
+        });
+      }
+    }
   }
 
   /**
