@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Message, AssistantMessage, ToolUseBlock, ContentBlock } from "../messages.js";
 import { createUserMessage, createAssistantMessage } from "../messages.js";
 import { streamChat, type APIConfig, type StreamEvent } from "../services/api.js";
@@ -25,10 +25,10 @@ interface UseStreamResponseReturn {
   readonly activeAgents: readonly AgentProgressEvent[];
 }
 
-/** A pending permission request with its resolve callback */
-interface PendingPermissionRequest {
-  readonly request: PermissionRequest;
-  readonly resolve: (result: { allowed: boolean; alwaysAllow: boolean }) => void;
+/** A pending permission request entry in the queue */
+interface PendingPermissionEntry {
+  request: PermissionRequest;
+  resolve: (result: { allowed: boolean; alwaysAllow: boolean }) => void;
 }
 
 /**
@@ -119,46 +119,42 @@ export function useStreamResponse(
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
   const [executingTools, setExecutingTools] = useState<readonly string[]>([]);
   const [activeAgents, setActiveAgents] = useState<readonly AgentProgressEvent[]>([]);
-  /** Queue of pending permission requests from concurrent sub-agents */
-  const pendingPermissionQueueRef = useRef<PendingPermissionRequest[]>([]);
+  /**
+   * Queue of pending permission requests from concurrent sub-agents.
+   * State-based so React re-renders on every queue change, ensuring
+   * the UI always reflects the current front of the queue.
+   */
+  const [pendingQueue, setPendingQueue] = useState<readonly PendingPermissionEntry[]>([]);
+  /** permissionRequest is kept for API compat but derived from pendingQueue */
+  const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
   /**
-   * Show the next permission request from the queue, or null if queue is empty.
-   * Called after a permission is resolved or cancelled.
+   * Sync permissionRequest with pendingQueue front.
+   * This ensures the UI always shows the front of the queue.
    */
-  const showNextPermission = useCallback(() => {
-    const queue = pendingPermissionQueueRef.current;
-    if (queue.length === 0) {
-      setPermissionRequest(null);
-      return;
-    }
-    const next = queue[0]!;
-    setPermissionRequest({
-      toolName: next.request.toolName,
-      message: next.request.message,
-    });
-  }, []);
+  useEffect(() => {
+    setPermissionRequest(pendingQueue.length > 0 ? pendingQueue[0]!.request : null);
+  }, [pendingQueue]);
 
   /** User responds to a permission prompt from the UI */
   const respondToPermission = useCallback(
     (allowed: boolean, alwaysAllow: boolean) => {
-      const queue = pendingPermissionQueueRef.current;
-      if (queue.length === 0) return;
+      // Peek at current queue (state is always current in callback context)
+      if (pendingQueue.length === 0) return;
 
       // Resolve the FIRST pending request (FIFO)
-      const pending = queue.shift()!;
-      pending.resolve({ allowed, alwaysAllow });
+      const [head, ...rest] = pendingQueue;
+      head.resolve({ allowed, alwaysAllow });
 
-      // Show next in queue, or null if empty
-      showNextPermission();
+      // Update queue state — React will re-render and permissionRequest will update
+      setPendingQueue(rest);
     },
-    [showNextPermission],
+    [pendingQueue],
   );
 
   /** onPermissionAsk callback for executeToolWithPermissions */
@@ -183,14 +179,8 @@ export function useStreamResponse(
           message: decision.message,
         };
 
-        // Add to queue
-        pendingPermissionQueueRef.current.push({ request, resolve });
-
-        // If this is the FIRST request, show it in UI immediately
-        if (pendingPermissionQueueRef.current.length === 1) {
-          setPermissionRequest(request);
-        }
-        // Otherwise, it's queued behind other requests — UI will show the front
+        // Append to queue — state update triggers re-render, currentPermission auto-updates
+        setPendingQueue((prev) => [...prev, { request, resolve }]);
       });
     },
     [],
@@ -200,17 +190,16 @@ export function useStreamResponse(
     abortControllerRef.current?.abort("user-cancel");
 
     // Reject all pending permission requests (they're effectively cancelled)
-    const queue = pendingPermissionQueueRef.current;
-    for (const pending of queue) {
+    // Use pendingQueue directly — it's always current in the callback context
+    for (const pending of pendingQueue) {
       pending.resolve({ allowed: false, alwaysAllow: false });
     }
-    pendingPermissionQueueRef.current = [];
-    setPermissionRequest(null);
+    setPendingQueue([]);
 
     abortControllerRef.current = null;
     setIsLoading(false);
     setStreamingText(null);
-  }, []);
+  }, [pendingQueue]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -360,11 +349,10 @@ export function useStreamResponse(
         }
       } finally {
         // Clear pending permission queue
-        for (const pending of pendingPermissionQueueRef.current) {
+        for (const pending of pendingQueue) {
           pending.resolve({ allowed: false, alwaysAllow: false });
         }
-        pendingPermissionQueueRef.current = [];
-        setPermissionRequest(null);
+        setPendingQueue([]);
 
         setIsLoading(false);
         setStreamingText(null);
@@ -373,7 +361,7 @@ export function useStreamResponse(
         abortControllerRef.current = null;
       }
     },
-    [config, setMessages, toolRegistry, toolContext],
+    [config, setMessages, toolRegistry, toolContext, pendingQueue],
   );
 
   return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents };
