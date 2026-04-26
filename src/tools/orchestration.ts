@@ -206,7 +206,10 @@ async function executeSingleTool(
 
 /**
  * Execute all tool_use blocks using the partition + batch strategy.
- * Returns tool_result blocks ready to be sent back to the API.
+ * - Safe batches (consecutive read-only tools) execute in parallel within the batch
+ * - Agent batches (sub-agents) execute concurrently with each other
+ * - Other unsafe batches execute serially
+ * Result order matches tool_use order for deterministic output.
  */
 export async function executeAllToolBatches(
   toolUseBlocks: ToolUseBlock[],
@@ -218,7 +221,21 @@ export async function executeAllToolBatches(
   const batches = partitionToolCalls(toolUseBlocks, registry);
   const allResults: Array<{ tool_use_id: string; content: string; is_error?: boolean; tool_name?: string; tool_input?: Record<string, unknown>; metadata?: Record<string, unknown> }> = [];
 
+  // Collect Agent batches separately — they'll run concurrently
+  const agentBatches: ToolBatch[] = [];
+  // Non-agent batches: safe + other unsafe, executed in order
+  const otherBatches: ToolBatch[] = [];
+
   for (const batch of batches) {
+    if (batch.blocks.some((b) => b.name === "Agent")) {
+      agentBatches.push(batch);
+    } else {
+      otherBatches.push(batch);
+    }
+  }
+
+  // Step 1: execute other batches in order (safe batches may run concurrently within)
+  for (const batch of otherBatches) {
     if (context.abortSignal.aborted) break;
 
     const results = await executeToolBatch(
@@ -234,6 +251,47 @@ export async function executeAllToolBatches(
         tool_input: r.tool_input,
         metadata: r.metadata,
       });
+    }
+  }
+
+  // Step 2: execute all agent batches concurrently
+  if (agentBatches.length > 0 && !context.abortSignal.aborted) {
+    if (agentBatches.length === 1) {
+      // Single agent — no concurrency benefit, just execute normally
+      const results = await executeToolBatch(
+        agentBatches[0]!, registry, context, permissionManager, onPermissionAsk,
+      );
+      for (const r of results) {
+        allResults.push({
+          tool_use_id: r.tool_use_id,
+          content: r.output,
+          is_error: r.error,
+          tool_name: r.tool_name,
+          tool_input: r.tool_input,
+          metadata: r.metadata,
+        });
+      }
+    } else {
+      // Multiple agents — run concurrently
+      const agentResults = await Promise.all(
+        agentBatches.map((batch) =>
+          executeToolBatch(batch, registry, context, permissionManager, onPermissionAsk),
+        ),
+      );
+
+      // Collect results in batch order (each batch's results are already in tool order)
+      for (const results of agentResults) {
+        for (const r of results) {
+          allResults.push({
+            tool_use_id: r.tool_use_id,
+            content: r.output,
+            is_error: r.error,
+            tool_name: r.tool_name,
+            tool_input: r.tool_input,
+            metadata: r.metadata,
+          });
+        }
+      }
     }
   }
 
