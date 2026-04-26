@@ -21,8 +21,8 @@ interface UseStreamResponseReturn {
   readonly respondToPermission: (allowed: boolean, alwaysAllow: boolean) => void;
   /** Names of tools currently being executed */
   readonly executingTools: readonly string[];
-  /** Agent progress during sub-agent execution, or null */
-  readonly agentProgress: AgentProgressEvent | null;
+  /** Active agent progress entries (one per running sub-agent) */
+  readonly activeAgents: readonly AgentProgressEvent[];
 }
 
 /**
@@ -115,7 +115,7 @@ export function useStreamResponse(
   const [error, setError] = useState<string | null>(null);
   const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
   const [executingTools, setExecutingTools] = useState<readonly string[]>([]);
-  const [agentProgress, setAgentProgress] = useState<AgentProgressEvent | null>(null);
+  const [activeAgents, setActiveAgents] = useState<readonly AgentProgressEvent[]>([]);
   const permissionResolveRef = useRef<((result: { allowed: boolean; alwaysAllow: boolean }) => void) | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef(messages);
@@ -257,7 +257,16 @@ export function useStreamResponse(
               apiConfig: config,
               toolRegistry: toolRegistry,
               onAgentProgress: (event) => {
-                setAgentProgress(event);
+                setActiveAgents((prev) => {
+                  // Update existing agent or add new one
+                  const existing = prev.findIndex((a) => a.agentType === event.agentType);
+                  if (existing >= 0) {
+                    const next = [...prev];
+                    next[existing] = event;
+                    return next;
+                  }
+                  return [...prev, event];
+                });
               },
             };
 
@@ -284,9 +293,9 @@ export function useStreamResponse(
               });
             }
 
-            // Clear executing tools and agent progress
+            // Clear executing tools and active agents
             setExecutingTools([]);
-            setAgentProgress(null);
+            setActiveAgents([]);
           }
 
           // Create user message with tool results
@@ -308,12 +317,12 @@ export function useStreamResponse(
         setIsLoading(false);
         setStreamingText(null);
         setExecutingTools([]);
-        setAgentProgress(null);
+        setActiveAgents([]);
         abortControllerRef.current = null;
       }
     },
     [config, setMessages, toolRegistry, toolContext],
   );
 
-  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, agentProgress };
+  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents };
 }

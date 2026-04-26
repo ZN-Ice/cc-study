@@ -63,6 +63,49 @@ export function filterToolsForAgent(
   return filtered;
 }
 
+/**
+ * Format a tool name + input as a short display string for UI.
+ */
+function formatToolShortDesc(
+  toolName: string,
+  input: Record<string, unknown>,
+): string {
+  switch (toolName) {
+    case "Read": {
+      const path = (input.file_path as string) ?? "?";
+      return `Read: ${truncateBasename(path, 30)}`;
+    }
+    case "Write": {
+      const path = (input.file_path as string) ?? "?";
+      return `Write: ${truncateBasename(path, 30)}`;
+    }
+    case "Edit": {
+      const path = (input.file_path as string) ?? "?";
+      return `Edit: ${truncateBasename(path, 30)}`;
+    }
+    case "Bash": {
+      const cmd = (input.command as string) ?? "";
+      return `Bash: ${truncateBasename(cmd, 30)}`;
+    }
+    case "Glob": {
+      const pattern = (input.pattern as string) ?? "";
+      return `Glob: ${pattern}`;
+    }
+    case "Grep": {
+      const pattern = (input.pattern as string) ?? "";
+      return `Grep: ${truncateBasename(pattern, 30)}`;
+    }
+    default:
+      return toolName;
+  }
+}
+
+function truncateBasename(s: string, max: number): string {
+  const parts = s.split("/");
+  const base = parts[parts.length - 1] ?? s;
+  return base.length > max ? base.slice(0, max - 1) + "…" : base;
+}
+
 // ──────────────────────────────────────────────
 // Stream Collection (reused from useStreamResponse pattern)
 // ──────────────────────────────────────────────
@@ -202,6 +245,8 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
   const messages: Message[] = [createUserMessage(prompt)];
 
   let totalToolUseCount = 0;
+  /** Last N tool executions for UI display */
+  const recentTools: string[] = [];
 
   // 4. Streaming loop
   for (let turn = 0; turn < effectiveMaxTurns; turn++) {
@@ -254,12 +299,22 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
     // Execute tools using partition + batch strategy (concurrent for safe tools)
     totalToolUseCount += toolUseBlocks.length;
 
+    // Update recent tools list (keep last 5)
+    for (const toolUse of toolUseBlocks) {
+      const shortDesc = formatToolShortDesc(toolUse.name, toolUse.input);
+      recentTools.push(shortDesc);
+    }
+    while (recentTools.length > 5) {
+      recentTools.shift();
+    }
+
     // Emit progress to parent
     onProgress?.({
       agentType: agentDefinition.agentType,
       description,
       toolUseCount: totalToolUseCount,
       startTime,
+      recentTools: [...recentTools],
     });
 
     if (context.abortSignal.aborted) break;

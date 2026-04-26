@@ -67,7 +67,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     tools: toolRegistry.getToolDefinitions(),
   };
 
-  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, agentProgress } =
+  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents } =
     useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);
 
   const requestExit = useCallback(() => {
@@ -135,22 +135,24 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
         </Box>
       )}
 
-      {/* Loading spinner */}
-      {isLoading && !agentProgress && executingTools.length > 0 && !permissionRequest && (
-        <Spinner mode="executing" toolNames={executingTools} />
+      {/* Loading spinner (hidden when agents are running) */}
+      {isLoading && activeAgents.length === 0 && executingTools.length === 0 && !permissionRequest && (
+        <>
+          {streamingText ? <Spinner mode="responding" /> : <Spinner mode="thinking" />}
+        </>
       )}
-      {isLoading && !streamingText && executingTools.length === 0 && !permissionRequest && <Spinner mode="thinking" />}
-      {isLoading && streamingText && executingTools.length === 0 && !permissionRequest && <Spinner mode="responding" />}
 
-      {/* Agent progress display */}
-      {agentProgress && (
+      {/* Agent progress display (one per running sub-agent) */}
+      {activeAgents.map((agent) => (
         <AgentProgress
-          agentType={agentProgress.agentType}
-          description={agentProgress.description}
-          toolUseCount={agentProgress.toolUseCount}
-          startTime={agentProgress.startTime}
+          key={agent.agentType}
+          agentType={agent.agentType}
+          description={agent.description}
+          toolUseCount={agent.toolUseCount}
+          startTime={agent.startTime}
+          recentTools={agent.recentTools}
         />
-      )}
+      ))}
 
       {/* Permission confirmation dialog */}
       {permissionRequest && (

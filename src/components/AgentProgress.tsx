@@ -3,8 +3,8 @@
  *
  * References: free-code/src/components/AgentProgressLine.tsx
  *
- * Displays agent type, description, tool use count, and elapsed time.
- * Updates every second for real-time feedback.
+ * Displays agent type, description, tool use count, elapsed time,
+ * and the last N tool invocations. Updates every second.
  */
 
 import React, { useState, useEffect } from "react";
@@ -19,6 +19,8 @@ export interface AgentProgressProps {
   readonly toolUseCount: number;
   /** Time when the agent started */
   readonly startTime: number;
+  /** Last N tool invocations as short strings */
+  readonly recentTools?: readonly string[];
 }
 
 export const AgentProgress: React.FC<AgentProgressProps> = ({
@@ -26,6 +28,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   description,
   toolUseCount,
   startTime,
+  recentTools,
 }) => {
   const [elapsed, setElapsed] = useState(() => Math.round((Date.now() - startTime) / 1000));
 
@@ -47,6 +50,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       <Text dimColor>
         {"   "}{toolUseCount} tool use{toolUseCount !== 1 ? "s" : ""} · {timeStr}
       </Text>
+      {recentTools && recentTools.length > 0 && (
+        <Box flexDirection="column" marginTop={1}>
+          {recentTools.map((tool, i) => (
+            <Text key={i} dimColor>
+              {"   "}▸ {tool}
+            </Text>
+          ))}
+        </Box>
+      )}
     </Box>
   );
 };
