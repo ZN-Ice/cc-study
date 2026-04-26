@@ -127,6 +127,16 @@ export function useStreamResponse(
    * the UI always reflects the current front of the queue.
    */
   const [pendingQueue, setPendingQueue] = useState<readonly PendingPermissionEntry[]>([]);
+  /**
+   * Ref that always holds the latest pendingQueue.
+   * Used by callbacks (respondToPermission, cancel, sendMessage) to avoid
+   * stale closures over the queue state. React state updates are async and
+   * batched, so callbacks created with useCallback may close over an old
+   * pendingQueue snapshot. The ref is updated synchronously on every render.
+   */
+  const pendingQueueRef = useRef<readonly PendingPermissionEntry[]>([]);
+  pendingQueueRef.current = pendingQueue;
+
   /** permissionRequest is kept for API compat but derived from pendingQueue */
   const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -144,17 +154,18 @@ export function useStreamResponse(
   /** User responds to a permission prompt from the UI */
   const respondToPermission = useCallback(
     (allowed: boolean, alwaysAllow: boolean) => {
-      // Peek at current queue (state is always current in callback context)
-      if (pendingQueue.length === 0) return;
+      // Use ref to always get the latest queue — avoids stale closure
+      const queue = pendingQueueRef.current;
+      if (queue.length === 0) return;
 
       // Resolve the FIRST pending request (FIFO)
-      const [head, ...rest] = pendingQueue;
-      head.resolve({ allowed, alwaysAllow });
+      const [head, ...rest] = queue;
+      head!.resolve({ allowed, alwaysAllow });
 
       // Update queue state — React will re-render and permissionRequest will update
       setPendingQueue(rest);
     },
-    [pendingQueue],
+    [], // No dependencies — reads from ref
   );
 
   /** onPermissionAsk callback for executeToolWithPermissions */
@@ -189,9 +200,9 @@ export function useStreamResponse(
   const cancel = useCallback(() => {
     abortControllerRef.current?.abort("user-cancel");
 
-    // Reject all pending permission requests (they're effectively cancelled)
-    // Use pendingQueue directly — it's always current in the callback context
-    for (const pending of pendingQueue) {
+    // Use ref to always get the latest queue — avoids stale closure
+    const queue = pendingQueueRef.current;
+    for (const pending of queue) {
       pending.resolve({ allowed: false, alwaysAllow: false });
     }
     setPendingQueue([]);
@@ -199,7 +210,7 @@ export function useStreamResponse(
     abortControllerRef.current = null;
     setIsLoading(false);
     setStreamingText(null);
-  }, [pendingQueue]);
+  }, []); // No dependencies — reads from ref
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -348,8 +359,8 @@ export function useStreamResponse(
           setError(message);
         }
       } finally {
-        // Clear pending permission queue
-        for (const pending of pendingQueue) {
+        // Clear pending permission queue — use ref to avoid stale closure
+        for (const pending of pendingQueueRef.current) {
           pending.resolve({ allowed: false, alwaysAllow: false });
         }
         setPendingQueue([]);
@@ -361,7 +372,7 @@ export function useStreamResponse(
         abortControllerRef.current = null;
       }
     },
-    [config, setMessages, toolRegistry, toolContext, pendingQueue],
+    [config, setMessages, toolRegistry, toolContext],
   );
 
   return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents };
