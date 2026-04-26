@@ -53,7 +53,7 @@ describe("MCP Config: extended transport types", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = join(tmpdir(), `mcp-transport-test-${Date.now()}`);
+    tmpDir = join(tmpdir(), `mcp-transport-test-${Date.now()}-${Math.random()}`);
     mkdirSync(tmpDir, { recursive: true });
   });
 
@@ -109,7 +109,12 @@ describe("MCP Config: extended transport types", () => {
       },
     }));
     const cfg = loadMcpConfig(tmpDir)!;
-    expect(Object.keys(cfg.mcpServers)).toHaveLength(3);
+    // Check that all 3 local servers are present
+    expect(cfg.mcpServers.local).toBeDefined();
+    expect(cfg.mcpServers.sseRemote).toBeDefined();
+    expect(cfg.mcpServers.httpRemote).toBeDefined();
+    // Global servers from ~/.claude.json may also be merged (depends on environment)
+    expect(Object.keys(cfg.mcpServers).length).toBeGreaterThanOrEqual(3);
   });
 });
 
