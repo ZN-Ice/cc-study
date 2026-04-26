@@ -8,9 +8,16 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 describe("loadMcpConfig", () => {
+  const originalHomedir = process.env.HOME;
   let tmpDir: string;
+  let fakeHome: string;
 
   beforeEach(() => {
+    // Create a fake home directory without ~/.claude.json for test isolation
+    fakeHome = join(tmpdir(), `fake-home-${Date.now()}-${Math.random()}`);
+    mkdirSync(fakeHome, { recursive: true });
+    process.env.HOME = fakeHome;
+
     tmpDir = join(tmpdir(), `mcp-config-test-${Date.now()}-${Math.random()}`);
     mkdirSync(tmpDir, { recursive: true });
   });
@@ -19,19 +26,18 @@ describe("loadMcpConfig", () => {
     if (existsSync(tmpDir)) {
       rmSync(tmpDir, { recursive: true, force: true });
     }
+    if (existsSync(fakeHome)) {
+      rmSync(fakeHome, { recursive: true, force: true });
+    }
+    if (originalHomedir) {
+      process.env.HOME = originalHomedir;
+    }
   });
 
   test("returns null when no .mcp.json exists and no global config exists", () => {
-    // When there's no local .mcp.json and no global ~/.claude.json with mcpServers
-    // (the global config with mcpServers exists in real home, so this tests the case
-    // where local returns null and global returns empty mcpServers)
     const result = loadMcpConfig(tmpDir);
-    // Result will be null only if there's no mcpServers in either local or global
-    // Since real ~/.claude.json has mcpServers, this test actually verifies global loading works
-    // The actual "null when no config" case is tested in the async tests with controlled env
-    expect(result).not.toBeNull();
-    // Verify global servers are loaded
-    expect(Object.keys(result!.mcpServers).length).toBeGreaterThan(0);
+    // With fake home (no ~/.claude.json), result should be null when no local .mcp.json exists
+    expect(result).toBeNull();
   });
 
   test("loads .mcp.json from specified directory", () => {
@@ -90,13 +96,20 @@ describe("loadMcpConfig", () => {
   });
 
   test("handles invalid JSON in local .mcp.json gracefully", () => {
+    // Write global config to fake home so we can test fallback when local JSON is invalid
+    const globalConfig = {
+      mcpServers: {
+        globalFallback: { command: "echo", args: ["global"] },
+      },
+    };
+    writeFileSync(join(fakeHome, ".claude.json"), JSON.stringify(globalConfig));
+
     writeFileSync(join(tmpDir, ".mcp.json"), "not valid json {{{");
 
     const result = loadMcpConfig(tmpDir);
     // Should still return global config since local parse failure is ignored
     expect(result).not.toBeNull();
-    // Global config servers should still be present
-    expect(Object.keys(result!.mcpServers).length).toBeGreaterThan(0);
+    expect(result!.mcpServers.globalFallback).toBeDefined();
   });
 
   test("parses server config with env variables", () => {
@@ -153,13 +166,21 @@ describe("loadMcpConfig", () => {
   });
 
   test("returns local mcpServers when .mcp.json has no mcpServers key", () => {
+    // Write global config to fake home for merging test
+    const globalConfig = {
+      mcpServers: {
+        globalServer: { command: "echo", args: ["global"] },
+      },
+    };
+    writeFileSync(join(fakeHome, ".claude.json"), JSON.stringify(globalConfig));
+
     writeFileSync(join(tmpDir, ".mcp.json"), JSON.stringify({ other: {} }));
 
     const result = loadMcpConfig(tmpDir);
     expect(result).not.toBeNull();
     // Local .mcp.json has empty mcpServers (because mcpServers key is missing)
     // But global config has servers, so they should be merged
-    expect(Object.keys(result!.mcpServers).length).toBeGreaterThan(0);
+    expect(result!.mcpServers.globalServer).toBeDefined();
   });
 });
 
