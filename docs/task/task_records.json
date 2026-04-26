@@ -637,11 +637,11 @@
     "source_ref": "free-code/src/services/mcpClient.ts",
     "task_desc": "研读 MCP 客户端：JSON-RPC 通信、Server 连接管理、工具发现与适配",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 MCP 协议的 initialize → tools/list → tools/call 流程"
+    "finish_time": "2026-04-26 17:00:00",
+    "check_result": "通过",
+    "remark": "深入分析了 MCP 协议机制（JSON-RPC 2.0、传输层、连接生命周期）、Claude Code 客户端架构（配置系统、连接管理、工具发现与适配），笔记记录到 docs/notes/phase5-mcp.md"
   },
   {
     "task_id": "P5002",
@@ -651,11 +651,11 @@
     "source_ref": "free-code/src/services/mcpClient.ts",
     "task_desc": "编写 MCP 集成设计文档：协议通信、Server 生命周期、工具适配层",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "输出到 docs/design/phase5-mcp.md"
+    "finish_time": "2026-04-26 17:15:00",
+    "check_result": "通过",
+    "remark": "输出到 docs/design/phase5-mcp.md，含架构设计、接口定义、数据流、错误处理、测试规划"
   },
   {
     "task_id": "P5003",
@@ -665,11 +665,11 @@
     "source_ref": null,
     "task_desc": "实现 MCP 集成：mcpClient、MCPTool 适配器、Server 配置发现、多 Server 管理",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "支持 stdio 和 SSE 两种传输方式"
+    "finish_time": "2026-04-26 18:00:00",
+    "check_result": "通过",
+    "remark": "实现 src/services/mcpConfig.ts(配置加载)、src/services/mcpClient.ts(客户端管理)、src/tools/MCPTool.ts(工具适配器)。37个MCP单元测试全部通过，421个全量测试通过，typecheck/lint通过"
   },
   {
     "task_id": "P4007",
@@ -707,11 +707,11 @@
     "source_ref": null,
     "task_desc": "编写 MCP 集成测试：连接建立、工具调用、多 Server、断线重连",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "覆盖率目标：70%+"
+    "finish_time": "2026-04-26 18:15:00",
+    "check_result": "通过",
+    "remark": "编写 4 个测试文件共 41 个测试用例：mcpConfig(9) mcpClient(14) mcpTool(14) mcpIntegration(4)，425个全量测试通过，typecheck/lint/build全通过"
   },
   {
     "task_id": "P6001",

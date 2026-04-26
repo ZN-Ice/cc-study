@@ -14,6 +14,7 @@ export { BashTool } from "./BashTool.js";
 export { GlobTool } from "./GlobTool.js";
 export { GrepTool } from "./GrepTool.js";
 export { AgentTool } from "./AgentTool/index.js";
+export { createMcpTool, normalizeMcpName } from "./MCPTool.js";
 
 import { ToolRegistry } from "./registry.js";
 import { FileReadTool } from "./FileReadTool.js";
