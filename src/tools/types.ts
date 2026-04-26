@@ -138,6 +138,13 @@ export interface Tool<T extends z.ZodType = z.ZodType> {
    */
   getPath?(input: z.infer<T>): string | undefined;
 
+  /**
+   * Extract search text from the tool execution result.
+   * Used for context compression (/compact) and result indexing.
+   * Return null if the result has no searchable content.
+   */
+  extractSearchText?(result: ToolResult): string | null;
+
   /** Execute the tool with typed, validated parameters */
   execute(
     input: z.infer<T>,

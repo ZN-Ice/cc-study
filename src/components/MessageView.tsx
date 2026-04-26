@@ -208,8 +208,23 @@ interface MessageProps {
 
 /** Render a single message */
 export const MessageView: React.FC<MessageProps> = ({ message }) => {
-  const label = message.type === "user" ? "You" : "Assistant";
-  const color = message.type === "user" ? "cyan" : "green";
+  let label: string;
+  let color: string;
+
+  switch (message.type) {
+    case "user":
+      label = "You";
+      color = "cyan";
+      break;
+    case "assistant":
+      label = "Assistant";
+      color = "green";
+      break;
+    case "system":
+      label = "System";
+      color = "yellow";
+      break;
+  }
 
   return (
     <Box flexDirection="column" marginBottom={1}>

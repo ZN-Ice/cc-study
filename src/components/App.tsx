@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import type { Message } from "../messages.js";
+import { createSystemMessage } from "../messages.js";
 import { PromptInput } from "./PromptInput.js";
 import { MessageList } from "./MessageList.js";
 import { Spinner } from "./Spinner.js";
@@ -18,6 +19,8 @@ import { PermissionManager } from "../permissions/manager.js";
 import { getProjectSettingsPath } from "../permissions/config.js";
 import { PermissionConfirm } from "./PermissionConfirm.js";
 import { AgentProgress } from "./AgentProgress.js";
+import { executeCommand } from "../commands/executor.js";
+import type { CommandContext } from "../commands/types.js";
 
 interface AppProps {
   readonly model: string;
@@ -134,12 +137,38 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     }
   });
 
+  const executeSlashCommand = useCallback(
+    async (input: string): Promise<string | null> => {
+      const commandContext: CommandContext = {
+        abortSignal: new AbortController().signal,
+        workingDirectory: process.cwd(),
+        canUseTool: (toolName: string) => toolRegistry.has(toolName),
+      };
+
+      return executeCommand(input, commandContext);
+    },
+    [toolRegistry],
+  );
+
   const handleSubmit = useCallback(
-    (value: string) => {
+    async (value: string) => {
       setInputValue("");
+
+      // Check for slash command
+      if (value.trim().startsWith("/")) {
+        const result = await executeSlashCommand(value);
+        if (result) {
+          // Add command result as a system message
+          const systemMessage = createSystemMessage(result);
+          setMessages((prev) => [...prev, systemMessage]);
+        }
+        return;
+      }
+
+      // Regular message - send to API
       void sendMessage(value.trim());
     },
-    [sendMessage],
+    [sendMessage, executeSlashCommand],
   );
 
   const handleChange = useCallback((value: string) => {

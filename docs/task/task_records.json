@@ -721,11 +721,11 @@
     "source_ref": "free-code/src/commands/",
     "task_desc": "研读斜杠命令系统：命令注册、分发、help/compact/config/resume 实现",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 commands/ 的统一接口和注册机制"
+    "finish_time": "2026-04-26 19:00:00",
+    "check_result": "通过",
+    "remark": "已研读命令类型（Prompt/Local/LocalJSX）、CommandBase结构、命令注册机制（COMMANDS memoize）、getCommands动态加载、findCommand查找、slashCommandParsing解析。笔记记录到 docs/design/phase6-advanced-features.md"
   },
   {
     "task_id": "P6002",
@@ -735,11 +735,11 @@
     "source_ref": "free-code/src/tools/MemoryReadTool/,free-code/src/tools/MemoryWriteTool/",
     "task_desc": "研读记忆系统：记忆读写、MEMORY.md 索引、文件式持久化",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解记忆的类型分类（user/feedback/project/reference）"
+    "finish_time": "2026-04-26 19:00:00",
+    "check_result": "通过",
+    "remark": "已研读记忆系统：MemoryReadTool/MemoryWriteTool不存在，实际是 /memory 命令（LocalJSXCommand）通过 MemoryFileSelector UI 编辑记忆文件。记忆文件存储在 ~/.claude/projects/ 目录，MEMORY.md 是索引文件。笔记记录到 docs/design/phase6-advanced-features.md"
   },
   {
     "task_id": "P6003",
@@ -749,11 +749,11 @@
     "source_ref": "free-code/src/commands/",
     "task_desc": "编写高级特性设计文档：斜杠命令、Hook 系统、记忆系统、会话恢复",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "输出到 docs/design/phase6-advanced.md"
+    "finish_time": "2026-04-26 19:00:00",
+    "check_result": "通过",
+    "remark": "输出到 docs/design/phase6-advanced-features.md，含命令类型定义、注册表架构、解析器、执行流程、Hook系统设计、记忆系统设计、Tool接口扩展、测试规划"
   },
   {
     "task_id": "P6004",
@@ -763,11 +763,11 @@
     "source_ref": null,
     "task_desc": "实现斜杠命令系统：命令注册表、/help、/compact、/config、/resume",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "命令通过 PromptInput 的 / 前缀识别"
+    "finish_time": "2026-04-26 21:50:00",
+    "check_result": "通过",
+    "remark": "实现 src/commands/ 模块：types.ts类型定义、slashCommandParser.ts解析器、index.ts注册表、builtins/目录下5个内置命令。45个测试全部通过，lint/typecheck/build通过"
   },
   {
     "task_id": "P6005",
@@ -777,11 +777,11 @@
     "source_ref": null,
     "task_desc": "实现 Hook 系统：PreToolUse、PostToolUse、Stop 三种 Hook 类型和执行器",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "Hook 通过 settings.json 配置，Shell 命令执行"
+    "finish_time": "2026-04-26 21:55:00",
+    "check_result": "通过",
+    "remark": "实现 src/hooks/ 模块：types.ts类型定义(PreToolUse/PostToolUse/Stop)、runner.ts HookRunner执行器(短路返回false/错误静默处理)、config.ts设置加载、index.ts统一导出。17个测试全部通过，lint/typecheck/build通过"
   },
   {
     "task_id": "P6006",
@@ -791,11 +791,11 @@
     "source_ref": null,
     "task_desc": "实现记忆系统：MemoryReadTool、MemoryWriteTool、MEMORY.md 索引管理",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "记忆文件存储在 .claude/projects/ 目录下"
+    "finish_time": "2026-04-26 21:58:00",
+    "check_result": "通过",
+    "remark": "增强/memory命令支持读写：parseMemoryArgs解析读写命令、writeMemoryFile写入文件、updateMemoryIndex更新MEMORY.md索引。25个测试全部通过，lint/typecheck/build通过"
   },
   {
     "task_id": "P6008",
@@ -805,11 +805,11 @@
     "source_ref": "free-code/src/tools/",
     "task_desc": "为 Tool 接口添加 extractSearchText 方法：从工具执行结果中提取搜索文本，供上下文压缩（/compact）和结果索引使用",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-12 18:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "参考 docs/user-study-note/phase2-tool-interface-analysis.md §4.2：extractSearchText 详解"
+    "finish_time": "2026-04-26 21:59:00",
+    "check_result": "通过",
+    "remark": "Tool接口添加extractSearchText可选方法，用于从执行结果提取搜索文本供/compact上下文压缩使用。556个测试全部通过"
   },
   {
     "task_id": "P6007",
@@ -819,11 +819,12 @@
     "source_ref": null,
     "task_desc": "编写高级特性测试：斜杠命令、Hook 执行、记忆读写、会话恢复",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "覆盖率目标：50%+（UI 交互部分较难测试）"
+    "finish_time": "2026-04-26 22:00:00",
+    "check_result": "通过",
+    "remark": "新增17个resume命令测试。Phase 6测试统计：命令解析(10)+注册表(16)+help(29)+内存(25)+hooks(17)+resume(17)=114个，573个全量测试通过"
+  },
   },
   {
     "task_id": "P7001",
@@ -1524,5 +1525,47 @@
     "finish_time": null,
     "check_result": null,
     "remark": "覆盖率目标：70%+。Mock Ink 组件，测试逻辑不依赖终端渲染"
+  },
+  {
+    "task_id": "P6009",
+    "task_type": "功能开发",
+    "phase": "Phase 6",
+    "module": "cmd",
+    "source_ref": "free-code/src/components/PromptInput.tsx",
+    "task_desc": "实现斜杠命令自动补全弹窗：输入 / 时显示可用命令列表，支持上下键选择，Tab/Enter 确认",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 22:30:00",
+    "finish_time": "2026-04-26 22:45:00",
+    "check_result": "通过",
+    "remark": "实现 CommandSelector 组件和 PromptInput 集成，输入 / 时显示命令列表，支持上下键选择和过滤"
+  },
+  {
+    "task_id": "P6010",
+    "task_type": "测试编写",
+    "phase": "Phase 6",
+    "module": "cmd",
+    "source_ref": null,
+    "task_desc": "编写命令自动补全测试：/ 触发弹窗、命令过滤、选择确认、Escape 取消",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 22:30:00",
+    "finish_time": "2026-04-26 22:45:00",
+    "check_result": "通过",
+    "remark": "15个测试用例全部通过，覆盖命令选择器和PromptInput集成，修复命令选择后无法输入的问题"
+  },
+  {
+    "task_id": "P6011",
+    "task_type": "功能开发",
+    "phase": "Phase 6",
+    "module": "cmd",
+    "source_ref": "free-code/src/commands/",
+    "task_desc": "增强斜杠命令自动补全支持层级命令：输入/时显示命令列表，输入/memory时自动显示memory的子命令(user/feedback/project/reference)",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 22:50:00",
+    "finish_time": "2026-04-26 22:55:00",
+    "check_result": "通过",
+    "remark": "实现层级命令支持：添加SubCommand类型定义，CommandSelector支持子命令视图，/memory命令添加subCommands定义"
   }
 ]
