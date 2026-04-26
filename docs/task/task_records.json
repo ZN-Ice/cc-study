@@ -721,11 +721,11 @@
     "source_ref": "free-code/src/commands/",
     "task_desc": "研读斜杠命令系统：命令注册、分发、help/compact/config/resume 实现",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 commands/ 的统一接口和注册机制"
+    "finish_time": "2026-04-26 19:00:00",
+    "check_result": "通过",
+    "remark": "已研读命令类型（Prompt/Local/LocalJSX）、CommandBase结构、命令注册机制（COMMANDS memoize）、getCommands动态加载、findCommand查找、slashCommandParsing解析。笔记记录到 docs/design/phase6-advanced-features.md"
   },
   {
     "task_id": "P6002",
@@ -735,11 +735,11 @@
     "source_ref": "free-code/src/tools/MemoryReadTool/,free-code/src/tools/MemoryWriteTool/",
     "task_desc": "研读记忆系统：记忆读写、MEMORY.md 索引、文件式持久化",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解记忆的类型分类（user/feedback/project/reference）"
+    "finish_time": "2026-04-26 19:00:00",
+    "check_result": "通过",
+    "remark": "已研读记忆系统：MemoryReadTool/MemoryWriteTool不存在，实际是 /memory 命令（LocalJSXCommand）通过 MemoryFileSelector UI 编辑记忆文件。记忆文件存储在 ~/.claude/projects/ 目录，MEMORY.md 是索引文件。笔记记录到 docs/design/phase6-advanced-features.md"
   },
   {
     "task_id": "P6003",
@@ -749,11 +749,11 @@
     "source_ref": "free-code/src/commands/",
     "task_desc": "编写高级特性设计文档：斜杠命令、Hook 系统、记忆系统、会话恢复",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "输出到 docs/design/phase6-advanced.md"
+    "finish_time": "2026-04-26 19:00:00",
+    "check_result": "通过",
+    "remark": "输出到 docs/design/phase6-advanced-features.md，含命令类型定义、注册表架构、解析器、执行流程、Hook系统设计、记忆系统设计、Tool接口扩展、测试规划"
   },
   {
     "task_id": "P6004",
@@ -763,11 +763,11 @@
     "source_ref": null,
     "task_desc": "实现斜杠命令系统：命令注册表、/help、/compact、/config、/resume",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "命令通过 PromptInput 的 / 前缀识别"
+    "finish_time": "2026-04-26 21:50:00",
+    "check_result": "通过",
+    "remark": "实现 src/commands/ 模块：types.ts类型定义、slashCommandParser.ts解析器、index.ts注册表、builtins/目录下5个内置命令。45个测试全部通过，lint/typecheck/build通过"
   },
   {
     "task_id": "P6005",
