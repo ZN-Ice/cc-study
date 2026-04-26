@@ -58,7 +58,14 @@ export interface AssistantMessage {
   readonly stopReason: string | null;
 }
 
-export type Message = UserMessage | AssistantMessage;
+export interface SystemMessage {
+  readonly type: "system";
+  readonly id: MessageId;
+  readonly content: readonly ContentBlock[];
+  readonly timestamp: number;
+}
+
+export type Message = UserMessage | AssistantMessage | SystemMessage;
 
 // ──────────────────────────────────────────────
 // Factory Functions
@@ -113,6 +120,31 @@ export function createAssistantMessage(options: CreateAssistantMessageOptions): 
   });
 }
 
+interface CreateSystemMessageOptions {
+  readonly content: string | readonly ContentBlock[];
+  readonly id?: MessageId;
+}
+
+/**
+ * Create a system message (e.g., from slash command output).
+ */
+export function createSystemMessage(
+  content: string | readonly ContentBlock[],
+  options?: CreateSystemMessageOptions,
+): SystemMessage {
+  const blocks: readonly ContentBlock[] =
+    typeof content === "string"
+      ? [{ type: "text", text: content }]
+      : content;
+
+  return Object.freeze({
+    type: "system",
+    id: options?.id ?? generateMessageId(),
+    content: blocks,
+    timestamp: Date.now(),
+  });
+}
+
 // ──────────────────────────────────────────────
 // API Normalization
 // ──────────────────────────────────────────────
@@ -125,20 +157,23 @@ interface APIMessage {
 /**
  * Convert internal messages to the format expected by the Anthropic API.
  * Strips internal-only fields (tool_name, tool_input, metadata) from tool_result blocks.
+ * Filters out system messages since they are internal output only.
  */
 export function normalizeForAPI(messages: readonly Message[]): APIMessage[] {
-  return messages.map((msg) => ({
-    role: msg.type === "user" ? "user" : "assistant",
-    content: msg.content.map((block) => {
-      if (block.type === "tool_result") {
-        return {
-          type: block.type,
-          tool_use_id: block.tool_use_id,
-          content: block.content,
-          is_error: block.is_error,
-        };
-      }
-      return block;
-    }),
-  }));
+  return messages
+    .filter((msg) => msg.type !== "system") // Exclude system messages
+    .map((msg) => ({
+      role: msg.type === "user" ? "user" : "assistant",
+      content: msg.content.map((block) => {
+        if (block.type === "tool_result") {
+          return {
+            type: block.type,
+            tool_use_id: block.tool_use_id,
+            content: block.content,
+            is_error: block.is_error,
+          };
+        }
+        return block;
+      }),
+    }));
 }
