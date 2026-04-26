@@ -13,7 +13,8 @@
 import type { AgentDefinition, AgentToolResult } from "./types.js";
 import type { ToolContext } from "../types.js";
 import type { APIConfig } from "../../services/api.js";
-import { ToolRegistry, executeTool } from "../registry.js";
+import { ToolRegistry } from "../registry.js";
+import { executeAllToolBatches } from "../orchestration.js";
 import { streamChat } from "../../services/api.js";
 import type { StreamEvent } from "../../services/api.js";
 import { createUserMessage, createAssistantMessage } from "../../messages.js";
@@ -244,27 +245,21 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
       break;
     }
 
-    // Execute tools and collect results
+    // Execute tools using partition + batch strategy (concurrent for safe tools)
     totalToolUseCount += toolUseBlocks.length;
-    const toolResultBlocks: ContentBlock[] = [];
 
-    for (const toolUse of toolUseBlocks) {
-      if (context.abortSignal.aborted) break;
+    if (context.abortSignal.aborted) break;
 
-      const result = await executeTool(
-        filteredRegistry,
-        toolUse.name,
-        toolUse.input,
-        context,
-      );
+    const results = await executeAllToolBatches(
+      toolUseBlocks, filteredRegistry, context,
+    );
 
-      toolResultBlocks.push({
-        type: "tool_result",
-        tool_use_id: toolUse.id,
-        content: result.output,
-        is_error: result.error,
-      });
-    }
+    const toolResultBlocks: ContentBlock[] = results.map((r) => ({
+      type: "tool_result" as const,
+      tool_use_id: r.tool_use_id,
+      content: r.content,
+      is_error: r.is_error,
+    }));
 
     // Create user message with tool results
     const toolResultMsg = createUserMessage(toolResultBlocks);

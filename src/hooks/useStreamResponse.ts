@@ -3,7 +3,7 @@ import type { Message, AssistantMessage, ToolUseBlock, ContentBlock } from "../m
 import { createUserMessage, createAssistantMessage } from "../messages.js";
 import { streamChat, type APIConfig, type StreamEvent } from "../services/api.js";
 import type { ToolRegistry, ToolContext } from "../tools/index.js";
-import { executeTool, executeToolWithPermissions } from "../tools/index.js";
+import { executeAllToolBatches } from "../tools/orchestration.js";
 import type { PermissionManager } from "../permissions/manager.js";
 import type { PermissionDecision } from "../permissions/types.js";
 import type { PermissionRequest } from "../components/PermissionConfirm.js";
@@ -231,21 +231,19 @@ export function useStreamResponse(
             break;
           }
 
-          // Execute tools and collect results
+          // Execute tools using partition + batch strategy
           const toolResultBlocks: ContentBlock[] = [];
-          for (const toolUse of toolUseBlocks) {
-            if (controller.signal.aborted) break;
 
-            if (!toolRegistry) {
+          if (!toolRegistry) {
+            for (const toolUse of toolUseBlocks) {
               toolResultBlocks.push({
                 type: "tool_result",
                 tool_use_id: toolUse.id,
                 content: "Error: Tool registry not available",
                 is_error: true,
               });
-              continue;
             }
-
+          } else {
             const ctx: ToolContext = {
               workingDirectory: toolContext?.workingDirectory ?? process.cwd(),
               abortSignal: controller.signal,
@@ -253,25 +251,19 @@ export function useStreamResponse(
               toolRegistry: toolRegistry,
             };
 
-            try {
-              const result = permissionManager
-                ? await executeToolWithPermissions(
-                    toolRegistry, toolUse.name, toolUse.input, ctx,
-                    permissionManager, onPermissionAsk,
-                  )
-                : await executeTool(toolRegistry, toolUse.name, toolUse.input, ctx);
+            if (controller.signal.aborted) break;
+
+            const results = await executeAllToolBatches(
+              toolUseBlocks, toolRegistry, ctx,
+              permissionManager, onPermissionAsk,
+            );
+
+            for (const r of results) {
               toolResultBlocks.push({
                 type: "tool_result",
-                tool_use_id: toolUse.id,
-                content: result.output,
-                is_error: result.error,
-              });
-            } catch (err) {
-              toolResultBlocks.push({
-                type: "tool_result",
-                tool_use_id: toolUse.id,
-                content: err instanceof Error ? err.message : String(err),
-                is_error: true,
+                tool_use_id: r.tool_use_id,
+                content: r.content,
+                is_error: r.is_error,
               });
             }
           }

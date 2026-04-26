@@ -616,6 +616,20 @@
     "remark": "Tool 接口新增 isReadOnly/isConcurrencySafe/getPath，ToolContext 新增 apiConfig/toolRegistry。6个工具全部实现对应方法，BashTool.isReadOnly 检测重定向"
   },
   {
+    "task_id": "P4006",
+    "task_type": "功能开发",
+    "phase": "Phase 4",
+    "module": "agent",
+    "source_ref": "free-code/src/services/tools/toolOrchestration.ts",
+    "task_desc": "实现工具并发调度：partitionToolCalls 分区算法、并发安全工具并行执行、非安全工具串行执行（含权限确认），替换 useStreamResponse 和 orchestrator 中的串行 for 循环",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 13:00:00",
+    "finish_time": "2026-04-26 12:55:00",
+    "check_result": "通过",
+    "remark": "实现 src/tools/orchestration.ts：partitionToolCalls 分区算法、executeToolsConcurrently/Serially 批量执行、executeAllToolBatches 便捷入口。useStreamResponse 和 orchestrator 均已接入。12个测试用例验证分区、并发、串行、取消。320个测试全部通过"
+  },
+  {
     "task_id": "P5001",
     "task_type": "源码研读",
     "phase": "Phase 5",
