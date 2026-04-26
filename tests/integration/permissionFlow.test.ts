@@ -120,12 +120,12 @@ describe("Permission integration", () => {
 
     const onAsk = vi.fn(async () => ({ allowed: true, alwaysAllow: false }));
 
+    // Use a write command (mkdir) that is NOT read-only, so it triggers ask
     const result = await s.executeToolWithPermissions(
-      s.registry, "Bash", { command: "echo user-allowed" }, s.ctx, s.pm, onAsk,
+      s.registry, "Bash", { command: "mkdir -p /tmp/cc-ask-test" }, s.ctx, s.pm, onAsk,
     );
 
     expect(onAsk).toHaveBeenCalledTimes(1);
-    expect(result.output).toContain("user-allowed");
     expect(result.error).toBeFalsy();
   });
 
@@ -137,8 +137,9 @@ describe("Permission integration", () => {
 
     const onAsk = vi.fn(async () => ({ allowed: false, alwaysAllow: false }));
 
+    // Use a write command (mkdir) to trigger ask
     const result = await s.executeToolWithPermissions(
-      s.registry, "Bash", { command: "echo denied-test" }, s.ctx, s.pm, onAsk,
+      s.registry, "Bash", { command: "mkdir /tmp/cc-deny-test" }, s.ctx, s.pm, onAsk,
     );
 
     expect(onAsk).toHaveBeenCalledTimes(1);
@@ -158,20 +159,18 @@ describe("Permission integration", () => {
       return { allowed: true, alwaysAllow: true };
     });
 
-    // First call — should ask
+    // First call — should ask (mkdir is not read-only)
     const result1 = await s.executeToolWithPermissions(
-      s.registry, "Bash", { command: "echo first" }, s.ctx, s.pm, onAsk,
+      s.registry, "Bash", { command: "mkdir -p /tmp/cc-always-test-1" }, s.ctx, s.pm, onAsk,
     );
     expect(onAsk).toHaveBeenCalledTimes(1);
-    expect(result1.output).toContain("first");
     expect(result1.error).toBeFalsy();
 
     // Second call — should NOT ask (session rule was added)
     const result2 = await s.executeToolWithPermissions(
-      s.registry, "Bash", { command: "echo second" }, s.ctx, s.pm, onAsk,
+      s.registry, "Bash", { command: "mkdir -p /tmp/cc-always-test-2" }, s.ctx, s.pm, onAsk,
     );
     expect(onAsk).toHaveBeenCalledTimes(1); // not called again
-    expect(result2.output).toContain("second");
     expect(result2.error).toBeFalsy();
   });
 
@@ -236,6 +235,23 @@ describe("Permission integration", () => {
     expect(result.error).toBe(true);
   });
 
+  // ── Read-only bash auto-allow ───────────────────────────────
+
+  test("Read-only bash commands auto-allowed without asking", async () => {
+    const s = await setupPermissionTest("default");
+    tmpDirs.push(s.tmpDir);
+
+    const onAsk = vi.fn(async () => ({ allowed: true, alwaysAllow: false }));
+
+    // ls, cat, git status — all read-only, should auto-allow
+    const result = await s.executeToolWithPermissions(
+      s.registry, "Bash", { command: "ls" }, s.ctx, s.pm, onAsk,
+    );
+
+    expect(onAsk).not.toHaveBeenCalled();
+    expect(result.error).toBeFalsy();
+  });
+
   // ── BashTool.checkPermissions: force ask ─────────────────────
 
   test("BashTool checkPermissions: sudo command triggers ask even in bypass mode", async () => {
@@ -261,9 +277,9 @@ describe("Permission integration", () => {
     const s = await setupPermissionTest("default");
     tmpDirs.push(s.tmpDir);
 
-    // No onPermissionAsk callback — ask decision should return error
+    // Use a write command (mkdir) to trigger ask, no callback
     const result = await s.executeToolWithPermissions(
-      s.registry, "Bash", { command: "echo test" }, s.ctx, s.pm,
+      s.registry, "Bash", { command: "mkdir /tmp/cc-no-callback-test" }, s.ctx, s.pm,
     );
 
     expect(result.output).toContain("requires permission");
@@ -299,11 +315,12 @@ describe("Permission integration", () => {
 
     const onAsk = vi.fn(async () => ({ allowed: true, alwaysAllow: true }));
 
+    // Use a write command to trigger ask
     const result = await s.executeToolWithPermissions(
-      s.registry, "Bash", { command: "echo persisted" }, s.ctx, s.pm, onAsk,
+      s.registry, "Bash", { command: "mkdir -p /tmp/cc-persist-test" }, s.ctx, s.pm, onAsk,
     );
 
-    expect(result.output).toContain("persisted");
+    expect(result.error).toBeFalsy();
 
     // Wait for fire-and-forget write to complete
     await new Promise((r) => setTimeout(r, 100));

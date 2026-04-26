@@ -120,6 +120,15 @@ export const BashTool: Tool<typeof inputSchema> = {
       }
     }
 
+    // Read-only commands are auto-allowed (matches free-code bash classifier)
+    // e.g. ls, cat, git status, grep, find, pwd, echo, ...
+    if (BashTool.isReadOnly!(input)) {
+      return {
+        behavior: "allow",
+        reason: { type: "toolCheck", toolName: "Bash" },
+      };
+    }
+
     // Default: no opinion — let the PermissionManager decision chain continue.
     // Returning undefined (instead of { behavior: "allow" }) ensures the
     // normal rule/mode/default-ask flow is respected for ordinary commands.
@@ -132,6 +141,7 @@ export const BashTool: Tool<typeof inputSchema> = {
   ): Promise<ToolResult> {
     const command = input.command;
     const timeout = Math.min(input.timeout ?? DEFAULT_TIMEOUT, 600_000);
+    const startTime = Date.now();
 
     return new Promise((resolveResult) => {
       let stdout = "";
@@ -190,15 +200,20 @@ export const BashTool: Tool<typeof inputSchema> = {
 
         const combined = output.join("\n") || "(no output)";
         const exitCode = code ?? 0;
+        const durationMs = Date.now() - startTime;
         if (exitCode !== 0) {
           resolveResult({
             output: `Exit code: ${exitCode}\n${combined}`,
             error: true,
+            metadata: { command, exitCode, durationMs },
           });
           return;
         }
 
-        resolveResult({ output: combined });
+        resolveResult({
+          output: combined,
+          metadata: { command, exitCode, durationMs },
+        });
       });
 
       proc.on("error", (err) => {

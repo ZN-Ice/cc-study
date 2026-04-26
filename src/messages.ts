@@ -21,6 +21,12 @@ export interface ToolResultBlock {
   readonly tool_use_id: string;
   readonly content: string;
   readonly is_error?: boolean;
+  /** Which tool produced this result */
+  readonly tool_name?: string;
+  /** Original tool input for display */
+  readonly tool_input?: Record<string, unknown>;
+  /** Tool-specific data for rich rendering */
+  readonly metadata?: Record<string, unknown>;
 }
 
 export interface ThinkingBlock {

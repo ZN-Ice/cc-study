@@ -80,6 +80,12 @@ export interface ToolExecutionResult {
   readonly tool_use_id: string;
   readonly output: string;
   readonly error?: boolean;
+  /** Which tool produced this result */
+  readonly tool_name?: string;
+  /** Original tool input for display */
+  readonly tool_input?: Record<string, unknown>;
+  /** Tool-specific metadata for rich rendering */
+  readonly metadata?: Record<string, unknown>;
 }
 
 /**
@@ -181,6 +187,9 @@ async function executeSingleTool(
       tool_use_id: toolUse.id,
       output: result.output,
       error: result.error,
+      tool_name: toolUse.name,
+      tool_input: toolUse.input,
+      metadata: result.metadata,
     };
   } catch (err) {
     return {
@@ -205,9 +214,9 @@ export async function executeAllToolBatches(
   context: ToolContext,
   permissionManager?: PermissionManager,
   onPermissionAsk?: OnPermissionAsk,
-): Promise<Array<{ tool_use_id: string; content: string; is_error?: boolean }>> {
+): Promise<Array<{ tool_use_id: string; content: string; is_error?: boolean; tool_name?: string; tool_input?: Record<string, unknown>; metadata?: Record<string, unknown> }>> {
   const batches = partitionToolCalls(toolUseBlocks, registry);
-  const allResults: Array<{ tool_use_id: string; content: string; is_error?: boolean }> = [];
+  const allResults: Array<{ tool_use_id: string; content: string; is_error?: boolean; tool_name?: string; tool_input?: Record<string, unknown>; metadata?: Record<string, unknown> }> = [];
 
   for (const batch of batches) {
     if (context.abortSignal.aborted) break;
@@ -221,6 +230,9 @@ export async function executeAllToolBatches(
         tool_use_id: r.tool_use_id,
         content: r.output,
         is_error: r.error,
+        tool_name: r.tool_name,
+        tool_input: r.tool_input,
+        metadata: r.metadata,
       });
     }
   }

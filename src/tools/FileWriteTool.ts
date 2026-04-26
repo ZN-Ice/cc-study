@@ -88,10 +88,12 @@ export const FileWriteTool: Tool<typeof inputSchema> = {
     if (isUpdate) {
       return {
         output: `The file ${filePath} has been updated successfully. (${lineCount} lines)`,
+        metadata: { path: filePath, action: "update", lines: lineCount },
       };
     }
     return {
       output: `File created successfully at: ${filePath} (${lineCount} lines)`,
+      metadata: { path: filePath, action: "create", lines: lineCount },
     };
   },
 };

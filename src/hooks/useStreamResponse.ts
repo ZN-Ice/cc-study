@@ -18,6 +18,8 @@ interface UseStreamResponseReturn {
   readonly permissionRequest: PermissionRequest | null;
   /** Callback to respond to a permission request */
   readonly respondToPermission: (allowed: boolean, alwaysAllow: boolean) => void;
+  /** Names of tools currently being executed */
+  readonly executingTools: readonly string[];
 }
 
 /**
@@ -109,6 +111,7 @@ export function useStreamResponse(
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
+  const [executingTools, setExecutingTools] = useState<readonly string[]>([]);
   const permissionResolveRef = useRef<((result: { allowed: boolean; alwaysAllow: boolean }) => void) | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef(messages);
@@ -253,6 +256,10 @@ export function useStreamResponse(
 
             if (controller.signal.aborted) break;
 
+            // Track which tools are being executed
+            const toolNames = toolUseBlocks.map((t) => t.name);
+            setExecutingTools(toolNames);
+
             const results = await executeAllToolBatches(
               toolUseBlocks, toolRegistry, ctx,
               permissionManager, onPermissionAsk,
@@ -264,8 +271,14 @@ export function useStreamResponse(
                 tool_use_id: r.tool_use_id,
                 content: r.content,
                 is_error: r.is_error,
+                tool_name: r.tool_name,
+                tool_input: r.tool_input,
+                metadata: r.metadata,
               });
             }
+
+            // Clear executing tools
+            setExecutingTools([]);
           }
 
           // Create user message with tool results
@@ -286,11 +299,12 @@ export function useStreamResponse(
       } finally {
         setIsLoading(false);
         setStreamingText(null);
+        setExecutingTools([]);
         abortControllerRef.current = null;
       }
     },
     [config, setMessages, toolRegistry, toolContext],
   );
 
-  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission };
+  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools };
 }

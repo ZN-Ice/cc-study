@@ -73,7 +73,7 @@ export const GlobTool: Tool<typeof inputSchema> = {
       });
 
       if (files.length === 0) {
-        return { output: "No files found" };
+        return { output: "No files found", metadata: { pattern: input.pattern, count: 0 } };
       }
 
       // Sort by modification time (most recent first)
@@ -102,7 +102,10 @@ export const GlobTool: Tool<typeof inputSchema> = {
         output += "\n\n(Results are truncated. Consider using a more specific path or pattern.)";
       }
 
-      return { output };
+      return {
+        output,
+        metadata: { pattern: input.pattern, count: withStats.length, truncated },
+      };
     } catch (err) {
       return {
         output: `Error: ${(err as Error).message}`,

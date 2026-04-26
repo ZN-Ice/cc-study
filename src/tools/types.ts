@@ -25,6 +25,8 @@ export type ValidationResult =
 export interface ToolResult {
   output: string;
   error?: boolean;
+  /** Tool-specific metadata for rich UI rendering */
+  metadata?: Record<string, unknown>;
 }
 
 // ──────────────────────────────────────────────

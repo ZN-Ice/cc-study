@@ -144,7 +144,7 @@ async function executeWithRipgrep(
     proc.on("close", (code) => {
       // ripgrep exit 1 = no matches (not an error)
       if (code === 1 && !stderr) {
-        resolveResult({ output: outputMode === "files_with_matches" ? "No files found" : "No matches found" });
+        resolveResult({ output: outputMode === "files_with_matches" ? "No files found" : "No matches found", metadata: { pattern, count: 0 } });
         return;
       }
       if (code !== null && code > 1) {
@@ -174,11 +174,12 @@ async function executeWithRipgrep(
         const unique = [...new Set(files)];
         resolveResult({
           output: `Found ${unique.length} file${unique.length === 1 ? "" : "s"}\n${unique.join("\n")}`,
+          metadata: { pattern, count: unique.length },
         });
         return;
       }
 
-      resolveResult({ output: processed.join("\n") || "No matches found" });
+      resolveResult({ output: processed.join("\n") || "No matches found", metadata: { pattern, count: lines.length } });
     });
 
     proc.on("error", (err) => {

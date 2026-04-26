@@ -105,6 +105,11 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
 
       return {
         output: result.content,
+        metadata: {
+          agentType: result.agentType,
+          toolUseCount: result.totalToolUseCount,
+          durationMs: result.totalDurationMs,
+        },
       };
     } catch (err) {
       if (context.abortSignal.aborted) {

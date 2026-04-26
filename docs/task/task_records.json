@@ -672,6 +672,34 @@
     "remark": "支持 stdio 和 SSE 两种传输方式"
   },
   {
+    "task_id": "P4007",
+    "task_type": "功能开发",
+    "phase": "Phase 4",
+    "module": "perm",
+    "source_ref": "free-code/src/hooks/useCanUseTool.tsx",
+    "task_desc": "打通 BashTool.isReadOnly 与 PermissionManager 的自动放行：参考 free-code 的 bash classifier 机制，让只读 Bash 命令（ls/cat/git status 等）在 PermissionManager.check() 中自动 allow，无需弹窗确认",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 14:00:00",
+    "finish_time": "2026-04-26 15:15:00",
+    "check_result": "通过",
+    "remark": "BashTool.checkPermissions 新增 isReadOnly 检查，只读命令（ls/cat/grep/git status等）返回 allow，跳过弹窗。更新 bashPermissions.test.ts 新增10个自动放行用例，更新 permissionFlow.test.ts 适配新行为，336个测试全部通过"
+  },
+  {
+    "task_id": "P4008",
+    "task_type": "功能开发",
+    "phase": "Phase 4",
+    "module": "ui",
+    "source_ref": "free-code/src/tools/AgentTool/UI.tsx,free-code/src/components/AgentProgressLine.tsx,free-code/src/components/ToolResultMessage.tsx",
+    "task_desc": "为 sub-agent 执行增加 UI 进度显示，并参考 free-code 优化所有工具的 UI 渲染：AgentProgressLine 进度行（agent类型、工具数、token数、spinner）、工具执行结果格式化（文件路径、代码片段、diff高亮）",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 15:00:00",
+    "finish_time": "2026-04-26 16:00:00",
+    "check_result": "通过",
+    "remark": "实现 ToolResult/ToolResultBlock metadata 扩展、7个工具返回结构化元数据、MessageView 富文本渲染（ToolUseDisplay+ToolResultDisplay）、AgentProgress 组件、Spinner executing 模式、useStreamResponse executingTools 状态追踪。356个测试全部通过"
+  },
+  {
     "task_id": "P5004",
     "task_type": "测试编写",
     "phase": "Phase 5",

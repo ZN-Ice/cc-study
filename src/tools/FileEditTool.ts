@@ -159,7 +159,10 @@ export const FileEditTool: Tool<typeof inputSchema> = {
         // Creating new file
         try {
           await writeFile(filePath, newString, "utf-8");
-          return { output: `File created successfully at: ${filePath}` };
+          return {
+            output: `File created successfully at: ${filePath}`,
+            metadata: { path: filePath, action: "create" },
+          };
         } catch (writeErr) {
           return {
             output: `Error creating file: ${(writeErr as Error).message}`,
@@ -200,8 +203,12 @@ export const FileEditTool: Tool<typeof inputSchema> = {
       const matchCount = content.split(oldString).length - 1;
       return {
         output: `The file ${filePath} has been updated. All ${matchCount} occurrences were successfully replaced.`,
+        metadata: { path: filePath, action: "replace_all", replacements: matchCount },
       };
     }
-    return { output: `The file ${filePath} has been updated successfully.` };
+    return {
+      output: `The file ${filePath} has been updated successfully.`,
+      metadata: { path: filePath, action: "edit", replacements: 1 },
+    };
   },
 };

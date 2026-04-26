@@ -66,7 +66,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     tools: toolRegistry.getToolDefinitions(),
   };
 
-  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission } =
+  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools } =
     useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);
 
   const requestExit = useCallback(() => {
@@ -135,8 +135,11 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       )}
 
       {/* Loading spinner */}
-      {isLoading && !streamingText && !permissionRequest && <Spinner mode="thinking" />}
-      {isLoading && streamingText && !permissionRequest && <Spinner mode="responding" />}
+      {isLoading && executingTools.length > 0 && !permissionRequest && (
+        <Spinner mode="executing" toolNames={executingTools} />
+      )}
+      {isLoading && !streamingText && executingTools.length === 0 && !permissionRequest && <Spinner mode="thinking" />}
+      {isLoading && streamingText && executingTools.length === 0 && !permissionRequest && <Spinner mode="responding" />}
 
       {/* Permission confirmation dialog */}
       {permissionRequest && (
