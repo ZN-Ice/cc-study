@@ -53,6 +53,14 @@ export const BashTool: Tool<typeof inputSchema> = {
     return { isSearch, isRead };
   },
 
+  isReadOnly(input: BashInput): boolean {
+    const cmd = input.command?.toLowerCase().trim() ?? "";
+    // Commands with output redirection are not read-only
+    if (/>\s*\S/.test(cmd) || />>\s*\S/.test(cmd)) return false;
+    const readOnlyCommands = /^(cat|ls|head|tail|grep|rg|ag|ack|find|pwd|echo|which|type|file|stat|wc|sort|uniq|diff|git\s+(status|log|diff|branch|remote|tag|show|blame)\b)/;
+    return readOnlyCommands.test(cmd);
+  },
+
   async checkPermissions(
     input: BashInput,
     _context: ToolContext,

@@ -47,6 +47,14 @@ export const GlobTool: Tool<typeof inputSchema> = {
     return { isSearch: true, isRead: false };
   },
 
+  isReadOnly(_input: GlobInput): boolean {
+    return true;
+  },
+
+  isConcurrencySafe(_input: GlobInput): boolean {
+    return true;
+  },
+
   async execute(
     input: GlobInput,
     context: ToolContext,

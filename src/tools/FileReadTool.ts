@@ -102,6 +102,18 @@ export const FileReadTool: Tool<typeof inputSchema> = {
     return { isSearch: false, isRead: true };
   },
 
+  isReadOnly(_input: FileReadInput): boolean {
+    return true;
+  },
+
+  isConcurrencySafe(_input: FileReadInput): boolean {
+    return true;
+  },
+
+  getPath(input: FileReadInput): string | undefined {
+    return input.file_path;
+  },
+
   async execute(
     input: FileReadInput,
     context: ToolContext,

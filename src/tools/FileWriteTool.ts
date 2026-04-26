@@ -43,6 +43,10 @@ export const FileWriteTool: Tool<typeof inputSchema> = {
     return { isSearch: false, isRead: false };
   },
 
+  getPath(input: FileWriteInput): string | undefined {
+    return input.file_path;
+  },
+
   async execute(
     input: FileWriteInput,
     context: ToolContext,

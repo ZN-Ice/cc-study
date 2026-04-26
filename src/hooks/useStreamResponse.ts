@@ -249,6 +249,8 @@ export function useStreamResponse(
             const ctx: ToolContext = {
               workingDirectory: toolContext?.workingDirectory ?? process.cwd(),
               abortSignal: controller.signal,
+              apiConfig: config,
+              toolRegistry: toolRegistry,
             };
 
             try {

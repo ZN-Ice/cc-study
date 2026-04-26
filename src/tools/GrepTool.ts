@@ -61,6 +61,14 @@ export const GrepTool: Tool<typeof inputSchema> = {
     return { isSearch: true, isRead: false };
   },
 
+  isReadOnly(_input: GrepInput): boolean {
+    return true;
+  },
+
+  isConcurrencySafe(_input: GrepInput): boolean {
+    return true;
+  },
+
   async execute(
     input: GrepInput,
     context: ToolContext,

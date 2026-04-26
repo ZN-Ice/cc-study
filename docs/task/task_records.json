@@ -553,11 +553,11 @@
     "source_ref": "free-code/src/tools/AgentTool/",
     "task_desc": "研读 AgentTool：Agent 作为工具的实现、类型定义、上下文隔离、结果回传",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 Agent 如何嵌套调用，形成树状结构"
+    "finish_time": "2026-04-26 12:17:00",
+    "check_result": "通过",
+    "remark": "已研读 AgentTool 18 个文件架构：Agent 类型系统（3类：built-in/custom/plugin）、双路径执行（fork/normal）、工具过滤链、结果摘要回传，笔记记录到 docs/notes/phase4-agent-tool.md"
   },
   {
     "task_id": "P4002",
@@ -567,11 +567,11 @@
     "source_ref": "free-code/src/tools/AgentTool/",
     "task_desc": "编写 Agent 子系统设计文档：类型注册、上下文隔离、并行编排、结果回传",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "输出到 docs/design/phase4-agent.md"
+    "finish_time": "2026-04-26 12:12:00",
+    "check_result": "通过",
+    "remark": "输出到 docs/design/phase4-agent.md，含类型系统、编排器架构、工具过滤、3个内置Agent定义、集成点、测试规划"
   },
   {
     "task_id": "P4003",
@@ -581,11 +581,11 @@
     "source_ref": null,
     "task_desc": "实现 Agent 子系统：AgentTool、类型注册、编排器、并行执行、结果回传",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "Agent 本质是嵌套的 REPL 循环，结果摘要回传父级"
+    "finish_time": "2026-04-26 12:22:00",
+    "check_result": "通过",
+    "remark": "实现 src/tools/AgentTool/ 5个文件：types.ts类型定义、agentDefs.ts 3个内置Agent、prompt.ts描述生成、orchestrator.ts嵌套循环、index.ts AgentTool。集成到 ToolRegistry 和 useStreamResponse。typecheck/lint/build/test 全通过"
   },
   {
     "task_id": "P4004",
@@ -595,11 +595,11 @@
     "source_ref": null,
     "task_desc": "编写 Agent 子系统测试：类型分发、上下文隔离、并行执行、取消机制",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "覆盖率目标：70%+"
+    "finish_time": "2026-04-26 12:22:00",
+    "check_result": "通过",
+    "remark": "编写 5 个测试文件共 54 个测试用例：types(10) agentDefs(9) orchestrator(12) agentTool(12) helpers(11)，Agent模块覆盖率 96.21%，308个测试全部通过"
   },
   {
     "task_id": "P4005",
@@ -609,11 +609,11 @@
     "source_ref": "free-code/src/tools/",
     "task_desc": "为 Tool 接口添加辅助能力方法：isReadOnly()、isConcurrencySafe()、getPath(input)，支持并行 Agent 执行时的并发控制和缓存策略",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-12 18:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "参考 docs/user-study-note/phase2-tool-interface-analysis.md 差异5：辅助能力缺失"
+    "finish_time": "2026-04-26 12:18:00",
+    "check_result": "通过",
+    "remark": "Tool 接口新增 isReadOnly/isConcurrencySafe/getPath，ToolContext 新增 apiConfig/toolRegistry。6个工具全部实现对应方法，BashTool.isReadOnly 检测重定向"
   },
   {
     "task_id": "P5001",

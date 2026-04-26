@@ -48,6 +48,10 @@ export const FileEditTool: Tool<typeof inputSchema> = {
     "Use this tool to edit files by specifying exactly what text to find (old_string) and what to replace it with (new_string). " +
     "The old_string must be an exact match and must be unique within the file (unless replace_all is true).",
 
+  getPath(input: FileEditInput): string | undefined {
+    return input.file_path;
+  },
+
   inputSchema,
 
   requiresConfirmation: true,
