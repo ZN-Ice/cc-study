@@ -135,6 +135,8 @@ describe("executeToolWithPermissions — ask decision", () => {
     expect(onAsk).toHaveBeenCalledTimes(1);
     expect(onAsk).toHaveBeenCalledWith(
       expect.objectContaining({ behavior: "ask" }),
+      "Bash",
+      { command: "ls" },
     );
     expect(result.output).toBe("done");
   });

@@ -202,6 +202,8 @@ export interface RunSubAgentParams {
   readonly parentRegistry: ToolRegistry;
   readonly context: ToolContext;
   readonly maxTurns?: number;
+  /** Unique identifier for this agent instance */
+  readonly agentId: string;
   /** Description of what this agent is doing (from tool input) */
   readonly description?: string;
   /** Callback for progress updates during agent execution */
@@ -224,6 +226,7 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
     parentRegistry,
     context,
     maxTurns,
+    agentId,
     description,
     onProgress,
   } = params;
@@ -310,6 +313,7 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
 
     // Emit progress to parent
     onProgress?.({
+      agentId,
       agentType: agentDefinition.agentType,
       description,
       toolUseCount: totalToolUseCount,

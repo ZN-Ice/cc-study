@@ -97,6 +97,8 @@ export interface AgentToolResult {
 
 /** Progress event emitted during agent execution */
 export interface AgentProgressEvent {
+  /** Unique identifier for this agent instance (enables concurrent same-type agents) */
+  readonly agentId: string;
   readonly agentType: string;
   readonly description?: string;
   readonly toolUseCount: number;

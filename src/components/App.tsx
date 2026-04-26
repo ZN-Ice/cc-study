@@ -145,7 +145,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       {/* Agent progress display (one per running sub-agent) */}
       {activeAgents.map((agent) => (
         <AgentProgress
-          key={agent.agentType}
+          key={agent.agentId}
           agentType={agent.agentType}
           description={agent.description}
           toolUseCount={agent.toolUseCount}

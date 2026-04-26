@@ -18,6 +18,9 @@ import { createDefaultAgentDefinitions } from "./agentDefs.js";
 import { getAgentToolDescription } from "./prompt.js";
 import { runSubAgent } from "./orchestrator.js";
 
+/** Counter for generating unique agent IDs within a session */
+let agentIdCounter = 0;
+
 // Create the default agent registry (module-level singleton)
 const agentDefinitions = createDefaultAgentDefinitions();
 
@@ -94,6 +97,8 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
     }
 
     try {
+      const agentId = `agent-${agentType}-${++agentIdCounter}`;
+
       const result = await runSubAgent({
         agentDefinition: agentDef,
         prompt: input.prompt,
@@ -101,6 +106,7 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
         parentRegistry,
         context,
         maxTurns: agentDef.maxTurns,
+        agentId,
         description: input.description,
         onProgress: context.onAgentProgress,
       });

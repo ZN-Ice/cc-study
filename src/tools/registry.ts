@@ -83,6 +83,8 @@ function formatZodError(error: z.ZodError): string {
 /** Callback invoked when a permission check returns 'ask'. */
 export type OnPermissionAsk = (
   decision: PermissionDecision,
+  toolName: string,
+  rawInput: Record<string, unknown>,
 ) => Promise<{ allowed: boolean; alwaysAllow: boolean }>;
 
 /**
@@ -211,7 +213,7 @@ export async function executeToolWithPermissions(
       };
     }
 
-    const userResponse = await onPermissionAsk(decision);
+    const userResponse = await onPermissionAsk(decision, name, rawInput);
 
     if (!userResponse.allowed) {
       return {

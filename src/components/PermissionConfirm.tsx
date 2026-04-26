@@ -13,6 +13,8 @@ export interface PermissionRequest {
   message?: string;
   /** Relevant content (e.g. command or file path) */
   content?: string;
+  /** Tool-specific subtitle for richer display */
+  subtitle?: string;
 }
 
 interface Option {
@@ -71,6 +73,9 @@ export const PermissionConfirm: React.FC<PermissionConfirmProps> = ({
       <Text>
         Tool: <Text bold>{request.toolName}</Text>
       </Text>
+      {request.subtitle && (
+        <Text>  {request.subtitle}</Text>
+      )}
       {request.content && (
         <Text dimColor>
           {request.content.length > 100

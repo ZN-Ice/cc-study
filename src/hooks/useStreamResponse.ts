@@ -32,6 +32,50 @@ interface PendingPermissionEntry {
 }
 
 /**
+ * Extract tool-specific details from a tool's input for permission display.
+ * Returns subtitle (one-line summary) and content (detail text).
+ */
+function extractToolPermissionDetails(
+  toolName: string,
+  rawInput: Record<string, unknown>,
+): { subtitle?: string; content?: string } {
+  switch (toolName) {
+    case "Agent": {
+      const subagentType = (rawInput.subagent_type as string) ?? "general-purpose";
+      const description = (rawInput.description as string) ?? "";
+      return {
+        subtitle: `Type: ${subagentType}${description ? ` — ${description}` : ""}`,
+        content: undefined,
+      };
+    }
+    case "Bash":
+      return {
+        subtitle: undefined,
+        content: (rawInput.command as string) ?? undefined,
+      };
+    case "Read":
+    case "Write":
+    case "Edit":
+      return {
+        subtitle: undefined,
+        content: (rawInput.file_path as string) ?? undefined,
+      };
+    case "Grep":
+      return {
+        subtitle: undefined,
+        content: (rawInput.pattern as string) ?? undefined,
+      };
+    case "Glob":
+      return {
+        subtitle: undefined,
+        content: (rawInput.pattern as string) ?? undefined,
+      };
+    default:
+      return { subtitle: undefined, content: undefined };
+  }
+}
+
+/**
  * Collect all content blocks and stop_reason from a stream.
  * Handles text_delta, input_json_delta, and content_block_start events.
  */
@@ -170,24 +214,20 @@ export function useStreamResponse(
 
   /** onPermissionAsk callback for executeToolWithPermissions */
   const onPermissionAsk = useCallback(
-    async (decision: PermissionDecision): Promise<{ allowed: boolean; alwaysAllow: boolean }> => {
-      // Safely extract toolName from decision.reason
-      let toolName = "Unknown";
-      if (
-        decision.reason != null &&
-        typeof decision.reason === "object" &&
-        "type" in decision.reason
-      ) {
-        const reason = decision.reason as { type: string; toolName?: string };
-        if ("toolName" in reason && typeof reason.toolName === "string") {
-          toolName = reason.toolName;
-        }
-      }
+    async (
+      decision: PermissionDecision,
+      toolName: string,
+      rawInput: Record<string, unknown>,
+    ): Promise<{ allowed: boolean; alwaysAllow: boolean }> => {
+      // Extract tool-specific details for richer permission display
+      const details = extractToolPermissionDetails(toolName, rawInput);
 
       return new Promise((resolve) => {
         const request: PermissionRequest = {
           toolName,
           message: decision.message,
+          content: details.content,
+          subtitle: details.subtitle,
         };
 
         // Append to queue — state update triggers re-render, currentPermission auto-updates
@@ -304,7 +344,7 @@ export function useStreamResponse(
               onAgentProgress: (event) => {
                 setActiveAgents((prev) => {
                   // Update existing agent or add new one
-                  const existing = prev.findIndex((a) => a.agentType === event.agentType);
+                  const existing = prev.findIndex((a) => a.agentId === event.agentId);
                   if (existing >= 0) {
                     const next = [...prev];
                     next[existing] = event;
