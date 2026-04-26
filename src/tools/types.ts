@@ -25,6 +25,8 @@ export type ValidationResult =
 export interface ToolResult {
   output: string;
   error?: boolean;
+  /** Tool-specific metadata for rich UI rendering */
+  metadata?: Record<string, unknown>;
 }
 
 // ──────────────────────────────────────────────
@@ -34,6 +36,12 @@ export interface ToolResult {
 export interface ToolContext {
   workingDirectory: string;
   abortSignal: AbortSignal;
+  /** API config for nested agent loops (used by AgentTool) */
+  apiConfig?: import("../services/api.js").APIConfig;
+  /** Parent tool registry for sub-agent tool filtering (used by AgentTool) */
+  toolRegistry?: import("./registry.js").ToolRegistry;
+  /** Progress callback for sub-agent execution */
+  onAgentProgress?: import("./AgentTool/types.js").OnAgentProgress;
 }
 
 // ──────────────────────────────────────────────
@@ -96,6 +104,25 @@ export interface Tool<T extends z.ZodType = z.ZodType> {
     isSearch: boolean;
     isRead: boolean;
   };
+
+  /**
+   * Whether this tool invocation is read-only (never modifies files/state).
+   * Used to determine if the tool is safe for parallel execution.
+   */
+  isReadOnly?(input: z.infer<T>): boolean;
+
+  /**
+   * Whether this tool invocation can safely run concurrently with other
+   * invocations of the same tool. Read-only tools are typically concurrency-safe.
+   */
+  isConcurrencySafe?(input: z.infer<T>): boolean;
+
+  /**
+   * Extract the primary file path from the tool input.
+   * Used for conflict detection during parallel execution.
+   * Returns undefined if the tool doesn't operate on a specific file.
+   */
+  getPath?(input: z.infer<T>): string | undefined;
 
   /** Execute the tool with typed, validated parameters */
   execute(

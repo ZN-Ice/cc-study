@@ -16,6 +16,7 @@ import type { ToolContext } from "../tools/types.js";
 import { PermissionManager } from "../permissions/manager.js";
 import { getProjectSettingsPath } from "../permissions/config.js";
 import { PermissionConfirm } from "./PermissionConfirm.js";
+import { AgentProgress } from "./AgentProgress.js";
 
 interface AppProps {
   readonly model: string;
@@ -66,7 +67,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     tools: toolRegistry.getToolDefinitions(),
   };
 
-  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission } =
+  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents } =
     useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);
 
   const requestExit = useCallback(() => {
@@ -134,9 +135,24 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
         </Box>
       )}
 
-      {/* Loading spinner */}
-      {isLoading && !streamingText && !permissionRequest && <Spinner mode="thinking" />}
-      {isLoading && streamingText && !permissionRequest && <Spinner mode="responding" />}
+      {/* Loading spinner (hidden when agents are running) */}
+      {isLoading && activeAgents.length === 0 && executingTools.length === 0 && !permissionRequest && (
+        <>
+          {streamingText ? <Spinner mode="responding" /> : <Spinner mode="thinking" />}
+        </>
+      )}
+
+      {/* Agent progress display (one per running sub-agent) */}
+      {activeAgents.map((agent) => (
+        <AgentProgress
+          key={agent.agentId}
+          agentType={agent.agentType}
+          description={agent.description}
+          toolUseCount={agent.toolUseCount}
+          startTime={agent.startTime}
+          recentTools={agent.recentTools}
+        />
+      ))}
 
       {/* Permission confirmation dialog */}
       {permissionRequest && (

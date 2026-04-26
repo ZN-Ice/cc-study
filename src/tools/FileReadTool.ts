@@ -102,6 +102,18 @@ export const FileReadTool: Tool<typeof inputSchema> = {
     return { isSearch: false, isRead: true };
   },
 
+  isReadOnly(_input: FileReadInput): boolean {
+    return true;
+  },
+
+  isConcurrencySafe(_input: FileReadInput): boolean {
+    return true;
+  },
+
+  getPath(input: FileReadInput): string | undefined {
+    return input.file_path;
+  },
+
   async execute(
     input: FileReadInput,
     context: ToolContext,
@@ -148,6 +160,9 @@ export const FileReadTool: Tool<typeof inputSchema> = {
         ? `\n(showing lines ${offset}-${Math.min(endLine, allLines.length)} of ${allLines.length})`
         : "";
 
-    return { output: header + result + footer };
+    return {
+      output: header + result + footer,
+      metadata: { path: filePath, totalLines: allLines.length, shownLines: selectedLines.length, offset, limit },
+    };
   },
 };

@@ -48,6 +48,10 @@ export const FileEditTool: Tool<typeof inputSchema> = {
     "Use this tool to edit files by specifying exactly what text to find (old_string) and what to replace it with (new_string). " +
     "The old_string must be an exact match and must be unique within the file (unless replace_all is true).",
 
+  getPath(input: FileEditInput): string | undefined {
+    return input.file_path;
+  },
+
   inputSchema,
 
   requiresConfirmation: true,
@@ -155,7 +159,10 @@ export const FileEditTool: Tool<typeof inputSchema> = {
         // Creating new file
         try {
           await writeFile(filePath, newString, "utf-8");
-          return { output: `File created successfully at: ${filePath}` };
+          return {
+            output: `File created successfully at: ${filePath}`,
+            metadata: { path: filePath, action: "create" },
+          };
         } catch (writeErr) {
           return {
             output: `Error creating file: ${(writeErr as Error).message}`,
@@ -196,8 +203,12 @@ export const FileEditTool: Tool<typeof inputSchema> = {
       const matchCount = content.split(oldString).length - 1;
       return {
         output: `The file ${filePath} has been updated. All ${matchCount} occurrences were successfully replaced.`,
+        metadata: { path: filePath, action: "replace_all", replacements: matchCount },
       };
     }
-    return { output: `The file ${filePath} has been updated successfully.` };
+    return {
+      output: `The file ${filePath} has been updated successfully.`,
+      metadata: { path: filePath, action: "edit", replacements: 1 },
+    };
   },
 };

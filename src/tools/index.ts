@@ -13,6 +13,7 @@ export { FileEditTool } from "./FileEditTool.js";
 export { BashTool } from "./BashTool.js";
 export { GlobTool } from "./GlobTool.js";
 export { GrepTool } from "./GrepTool.js";
+export { AgentTool } from "./AgentTool/index.js";
 
 import { ToolRegistry } from "./registry.js";
 import { FileReadTool } from "./FileReadTool.js";
@@ -21,6 +22,7 @@ import { FileEditTool } from "./FileEditTool.js";
 import { BashTool } from "./BashTool.js";
 import { GlobTool } from "./GlobTool.js";
 import { GrepTool } from "./GrepTool.js";
+import { AgentTool } from "./AgentTool/index.js";
 
 /** Create a registry with all core tools registered */
 export function createDefaultRegistry(): ToolRegistry {
@@ -31,5 +33,6 @@ export function createDefaultRegistry(): ToolRegistry {
   registry.register(BashTool);
   registry.register(GlobTool);
   registry.register(GrepTool);
+  registry.register(AgentTool);
   return registry;
 }

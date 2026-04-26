@@ -5,7 +5,7 @@
  * Navigate with Up/Down arrows, confirm with Enter.
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 
 export interface PermissionRequest {
@@ -13,6 +13,8 @@ export interface PermissionRequest {
   message?: string;
   /** Relevant content (e.g. command or file path) */
   content?: string;
+  /** Tool-specific subtitle for richer display */
+  subtitle?: string;
 }
 
 interface Option {
@@ -39,6 +41,12 @@ export const PermissionConfirm: React.FC<PermissionConfirmProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [answered, setAnswered] = useState(false);
 
+  // Reset internal state when the permission request changes (queue advanced)
+  useEffect(() => {
+    setSelectedIndex(0);
+    setAnswered(false);
+  }, [request]);
+
   useInput((_input, key) => {
     if (answered) return;
 
@@ -50,6 +58,10 @@ export const PermissionConfirm: React.FC<PermissionConfirmProps> = ({
       const opt = OPTIONS[selectedIndex];
       setAnswered(true);
       onRespond(opt.allowed, opt.alwaysAllow);
+    } else if (key.escape) {
+      // ESC: deny this permission and advance to next in queue
+      setAnswered(true);
+      onRespond(false, false);
     }
   });
 
@@ -61,6 +73,9 @@ export const PermissionConfirm: React.FC<PermissionConfirmProps> = ({
       <Text>
         Tool: <Text bold>{request.toolName}</Text>
       </Text>
+      {request.subtitle && (
+        <Text>  {request.subtitle}</Text>
+      )}
       {request.content && (
         <Text dimColor>
           {request.content.length > 100
@@ -91,7 +106,7 @@ export const PermissionConfirm: React.FC<PermissionConfirmProps> = ({
       </Box>
       {!answered && (
         <Box marginTop={1}>
-          <Text dimColor>↑↓ navigate · Enter confirm</Text>
+          <Text dimColor>↑↓ navigate · Enter confirm · Esc deny</Text>
         </Box>
       )}
     </Box>

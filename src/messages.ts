@@ -21,6 +21,12 @@ export interface ToolResultBlock {
   readonly tool_use_id: string;
   readonly content: string;
   readonly is_error?: boolean;
+  /** Which tool produced this result */
+  readonly tool_name?: string;
+  /** Original tool input for display */
+  readonly tool_input?: Record<string, unknown>;
+  /** Tool-specific data for rich rendering */
+  readonly metadata?: Record<string, unknown>;
 }
 
 export interface ThinkingBlock {
@@ -118,10 +124,21 @@ interface APIMessage {
 
 /**
  * Convert internal messages to the format expected by the Anthropic API.
+ * Strips internal-only fields (tool_name, tool_input, metadata) from tool_result blocks.
  */
 export function normalizeForAPI(messages: readonly Message[]): APIMessage[] {
   return messages.map((msg) => ({
     role: msg.type === "user" ? "user" : "assistant",
-    content: msg.content,
+    content: msg.content.map((block) => {
+      if (block.type === "tool_result") {
+        return {
+          type: block.type,
+          tool_use_id: block.tool_use_id,
+          content: block.content,
+          is_error: block.is_error,
+        };
+      }
+      return block;
+    }),
   }));
 }
