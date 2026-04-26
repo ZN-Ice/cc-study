@@ -39,6 +39,20 @@ export class ToolRegistry {
   /** Generate tool definitions for the Anthropic API */
   getToolDefinitions(): ToolDefinition[] {
     return this.getAll().map((tool) => {
+      // MCP tools provide their own JSON Schema from the server — use it directly
+      // so the model sees the actual parameter names and types
+      if (tool.apiInputSchema) {
+        const schema = tool.apiInputSchema;
+        return {
+          name: tool.name,
+          description: tool.description,
+          input_schema: {
+            type: "object" as const,
+            properties: schema.properties ?? {},
+            required: schema.required ?? [],
+          },
+        };
+      }
       const jsonSchema = z.toJSONSchema(tool.inputSchema) as {
         type: string;
         properties?: Record<string, unknown>;

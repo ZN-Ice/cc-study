@@ -11,8 +11,9 @@ import type { APIConfig } from "../services/api.js";
 import { resolveApiKey } from "../services/api.js";
 import { twoPressReducer } from "../utils/twoPressExit.js";
 import type { TwoPressExitState } from "../utils/twoPressExit.js";
-import { createDefaultRegistry } from "../tools/index.js";
+import { createDefaultRegistry, loadAndRegisterMcpTools } from "../tools/index.js";
 import type { ToolContext } from "../tools/types.js";
+import type { McpLoadResult } from "../tools/index.js";
 import { PermissionManager } from "../permissions/manager.js";
 import { getProjectSettingsPath } from "../permissions/config.js";
 import { PermissionConfirm } from "./PermissionConfirm.js";
@@ -33,8 +34,12 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
   });
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Create tool registry once
+  // Create tool registry once (synchronous — built-in tools)
   const toolRegistry = useMemo(() => createDefaultRegistry(), []);
+  // Bumped when MCP tools are loaded, so apiConfig.tools refreshes
+  const [mcpRevision, setMcpRevision] = useState(0);
+  const mcpLoadResultRef = useRef<McpLoadResult | null>(null);
+
   // Create permission manager with default rules (allow read-only, ask for writes/bash)
   const permissionManager = useMemo(() => {
     const pm = new PermissionManager();
@@ -51,6 +56,31 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       // File doesn't exist or is invalid — fine, use defaults
     });
   }, [permissionManager]);
+
+  // Load MCP servers asynchronously on mount
+  useEffect(() => {
+    let cancelled = false;
+    loadAndRegisterMcpTools(toolRegistry, process.cwd())
+      .then((result) => {
+        if (cancelled) return;
+        mcpLoadResultRef.current = result;
+        if (result.toolCount > 0) {
+          setMcpRevision((r) => r + 1);
+        }
+      })
+      .catch(() => {
+        // MCP loading failure should not block the app
+      });
+    return () => { cancelled = true; };
+  }, [toolRegistry]);
+
+  // Cleanup MCP connections on unmount
+  useEffect(() => {
+    return () => {
+      mcpLoadResultRef.current?.clientManager.disconnectAll().catch(() => {});
+    };
+  }, []);
+
   const toolContext = useMemo<Partial<ToolContext>>(
     () => ({
       workingDirectory: process.cwd(),
@@ -58,14 +88,16 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     [],
   );
 
-  const apiConfig: APIConfig = {
+  // mcpRevision is included to force recompute when MCP tools are added
+  const apiConfig: APIConfig = useMemo(() => ({
     apiKey: apiKey ?? resolveApiKey(),
     model,
     maxTokens: DEFAULT_API_CONFIG.maxTokens,
     systemPrompt: SYSTEM_PROMPT,
     temperature: DEFAULT_API_CONFIG.temperature,
     tools: toolRegistry.getToolDefinitions(),
-  };
+    // mcpRevision is not used directly but forces memo invalidation
+  }), [apiKey, model, toolRegistry, mcpRevision]);
 
   const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents } =
     useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);

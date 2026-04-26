@@ -103,4 +103,37 @@ describe("ToolRegistry", () => {
     expect(result.error).toBeUndefined();
     expect(result.output).toBe("mock: hello");
   });
+
+  test("getToolDefinitions uses apiInputSchema when available", () => {
+    const mcpTool: Tool<typeof mockSchema> & { apiInputSchema?: Record<string, unknown> } = {
+      name: "MCPTest",
+      description: "MCP tool with override schema",
+      inputSchema: z.object({}).passthrough(),
+      apiInputSchema: {
+        type: "object",
+        properties: { search_query: { type: "string" } },
+        required: ["search_query"],
+      },
+      async validateInput() {
+        return { ok: true } as ValidationResult;
+      },
+      async execute() {
+        return { output: "ok" };
+      },
+    };
+    const registry = new ToolRegistry();
+    registry.register(mcpTool as Tool);
+    const defs = registry.getToolDefinitions();
+    expect(defs).toHaveLength(1);
+    // Should use apiInputSchema, not the empty Zod passthrough schema
+    expect(defs[0].input_schema.properties).toHaveProperty("search_query");
+    expect(defs[0].input_schema.required).toContain("search_query");
+  });
+
+  test("getToolDefinitions falls back to Zod schema when apiInputSchema is absent", () => {
+    const registry = new ToolRegistry();
+    registry.register(mockTool);
+    const defs = registry.getToolDefinitions();
+    expect(defs[0].input_schema.properties).toHaveProperty("input");
+  });
 });
