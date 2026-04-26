@@ -1525,5 +1525,47 @@
     "finish_time": null,
     "check_result": null,
     "remark": "覆盖率目标：70%+。Mock Ink 组件，测试逻辑不依赖终端渲染"
+  },
+  {
+    "task_id": "P6009",
+    "task_type": "功能开发",
+    "phase": "Phase 6",
+    "module": "cmd",
+    "source_ref": "free-code/src/components/PromptInput.tsx",
+    "task_desc": "实现斜杠命令自动补全弹窗：输入 / 时显示可用命令列表，支持上下键选择，Tab/Enter 确认",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 22:30:00",
+    "finish_time": "2026-04-26 22:45:00",
+    "check_result": "通过",
+    "remark": "实现 CommandSelector 组件和 PromptInput 集成，输入 / 时显示命令列表，支持上下键选择和过滤"
+  },
+  {
+    "task_id": "P6010",
+    "task_type": "测试编写",
+    "phase": "Phase 6",
+    "module": "cmd",
+    "source_ref": null,
+    "task_desc": "编写命令自动补全测试：/ 触发弹窗、命令过滤、选择确认、Escape 取消",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 22:30:00",
+    "finish_time": "2026-04-26 22:45:00",
+    "check_result": "通过",
+    "remark": "15个测试用例全部通过，覆盖命令选择器和PromptInput集成，修复命令选择后无法输入的问题"
+  },
+  {
+    "task_id": "P6011",
+    "task_type": "功能开发",
+    "phase": "Phase 6",
+    "module": "cmd",
+    "source_ref": "free-code/src/commands/",
+    "task_desc": "增强斜杠命令自动补全支持层级命令：输入/时显示命令列表，输入/memory时自动显示memory的子命令(user/feedback/project/reference)",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-04-26 22:50:00",
+    "finish_time": "2026-04-26 22:55:00",
+    "check_result": "通过",
+    "remark": "实现层级命令支持：添加SubCommand类型定义，CommandSelector支持子命令视图，/memory命令添加subCommands定义"
   }
 ]
