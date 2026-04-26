@@ -167,6 +167,7 @@ async function executeToolsSerially(
 
 /**
  * Execute a single tool call with optional permission checking.
+ * Respects abort signal — returns an error immediately if already aborted.
  */
 async function executeSingleTool(
   toolUse: ToolUseBlock,
@@ -175,6 +176,15 @@ async function executeSingleTool(
   permissionManager?: PermissionManager,
   onPermissionAsk?: OnPermissionAsk,
 ): Promise<ToolExecutionResult> {
+  // Check abort BEFORE starting the tool — ensures ESC immediately stops new tool calls
+  if (context.abortSignal.aborted) {
+    return {
+      tool_use_id: toolUse.id,
+      output: "Tool execution was cancelled",
+      error: true,
+    };
+  }
+
   try {
     const result = permissionManager
       ? await executeToolWithPermissions(

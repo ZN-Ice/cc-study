@@ -25,6 +25,12 @@ interface UseStreamResponseReturn {
   readonly activeAgents: readonly AgentProgressEvent[];
 }
 
+/** A pending permission request with its resolve callback */
+interface PendingPermissionRequest {
+  readonly request: PermissionRequest;
+  readonly resolve: (result: { allowed: boolean; alwaysAllow: boolean }) => void;
+}
+
 /**
  * Collect all content blocks and stop_reason from a stream.
  * Handles text_delta, input_json_delta, and content_block_start events.
@@ -116,21 +122,43 @@ export function useStreamResponse(
   const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
   const [executingTools, setExecutingTools] = useState<readonly string[]>([]);
   const [activeAgents, setActiveAgents] = useState<readonly AgentProgressEvent[]>([]);
-  const permissionResolveRef = useRef<((result: { allowed: boolean; alwaysAllow: boolean }) => void) | null>(null);
+  /** Queue of pending permission requests from concurrent sub-agents */
+  const pendingPermissionQueueRef = useRef<PendingPermissionRequest[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
+  /**
+   * Show the next permission request from the queue, or null if queue is empty.
+   * Called after a permission is resolved or cancelled.
+   */
+  const showNextPermission = useCallback(() => {
+    const queue = pendingPermissionQueueRef.current;
+    if (queue.length === 0) {
+      setPermissionRequest(null);
+      return;
+    }
+    const next = queue[0]!;
+    setPermissionRequest({
+      toolName: next.request.toolName,
+      message: next.request.message,
+    });
+  }, []);
+
   /** User responds to a permission prompt from the UI */
   const respondToPermission = useCallback(
     (allowed: boolean, alwaysAllow: boolean) => {
-      if (permissionResolveRef.current) {
-        permissionResolveRef.current({ allowed, alwaysAllow });
-        permissionResolveRef.current = null;
-      }
-      setPermissionRequest(null);
+      const queue = pendingPermissionQueueRef.current;
+      if (queue.length === 0) return;
+
+      // Resolve the FIRST pending request (FIFO)
+      const pending = queue.shift()!;
+      pending.resolve({ allowed, alwaysAllow });
+
+      // Show next in queue, or null if empty
+      showNextPermission();
     },
-    [],
+    [showNextPermission],
   );
 
   /** onPermissionAsk callback for executeToolWithPermissions */
@@ -150,11 +178,19 @@ export function useStreamResponse(
       }
 
       return new Promise((resolve) => {
-        permissionResolveRef.current = resolve;
-        setPermissionRequest({
+        const request: PermissionRequest = {
           toolName,
           message: decision.message,
-        });
+        };
+
+        // Add to queue
+        pendingPermissionQueueRef.current.push({ request, resolve });
+
+        // If this is the FIRST request, show it in UI immediately
+        if (pendingPermissionQueueRef.current.length === 1) {
+          setPermissionRequest(request);
+        }
+        // Otherwise, it's queued behind other requests — UI will show the front
       });
     },
     [],
@@ -162,6 +198,15 @@ export function useStreamResponse(
 
   const cancel = useCallback(() => {
     abortControllerRef.current?.abort("user-cancel");
+
+    // Reject all pending permission requests (they're effectively cancelled)
+    const queue = pendingPermissionQueueRef.current;
+    for (const pending of queue) {
+      pending.resolve({ allowed: false, alwaysAllow: false });
+    }
+    pendingPermissionQueueRef.current = [];
+    setPermissionRequest(null);
+
     abortControllerRef.current = null;
     setIsLoading(false);
     setStreamingText(null);
@@ -314,6 +359,13 @@ export function useStreamResponse(
           setError(message);
         }
       } finally {
+        // Clear pending permission queue
+        for (const pending of pendingPermissionQueueRef.current) {
+          pending.resolve({ allowed: false, alwaysAllow: false });
+        }
+        pendingPermissionQueueRef.current = [];
+        setPermissionRequest(null);
+
         setIsLoading(false);
         setStreamingText(null);
         setExecutingTools([]);
