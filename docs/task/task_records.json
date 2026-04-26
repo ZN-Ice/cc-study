@@ -819,11 +819,12 @@
     "source_ref": null,
     "task_desc": "编写高级特性测试：斜杠命令、Hook 执行、记忆读写、会话恢复",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "覆盖率目标：50%+（UI 交互部分较难测试）"
+    "finish_time": "2026-04-26 22:00:00",
+    "check_result": "通过",
+    "remark": "新增17个resume命令测试。Phase 6测试统计：命令解析(10)+注册表(16)+help(29)+内存(25)+hooks(17)+resume(17)=114个，573个全量测试通过"
+  },
   },
   {
     "task_id": "P7001",
