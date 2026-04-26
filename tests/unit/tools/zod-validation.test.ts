@@ -10,7 +10,6 @@ import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { z } from "zod";
 import { ToolRegistry, executeTool } from "../../../src/tools/registry.js";
 import { FileReadTool } from "../../../src/tools/FileReadTool.js";
 import { FileWriteTool } from "../../../src/tools/FileWriteTool.js";

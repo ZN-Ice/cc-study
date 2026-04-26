@@ -10,7 +10,7 @@
  * Also tests concurrent sub-agent permission queue behavior.
  */
 
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, vi, afterEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -166,9 +166,7 @@ describe("Permission integration", () => {
     const s = await setupPermissionTest("default");
     tmpDirs.push(s.tmpDir);
 
-    let askCount = 0;
     const onAsk = vi.fn(async () => {
-      askCount++;
       return { allowed: true, alwaysAllow: true };
     });
 
@@ -532,7 +530,6 @@ describe("Permission queue with concurrent sub-agents", () => {
 
     // Both agents triggered permission asks — queue should have at least 1
     expect(result.current.permissionRequest).not.toBeNull();
-    const firstToolName = result.current.permissionRequest!.toolName;
 
     // Respond to the first permission (approve)
     await s.act(async () => {
@@ -559,11 +556,9 @@ describe("Permission queue with concurrent sub-agents", () => {
     const { streamChat: streamChatModule } = await import("../../src/services/api.js");
     const mockStreamChat = vi.mocked(streamChatModule);
 
-    let callCount = 0;
-    let outerCallCount = 0;
-
     // Track the order of permission requests
     const permissionRequestOrder: string[] = [];
+    let outerCallCount = 0;
 
     // Mock PermissionManager.check to track order and return "ask"
     const originalCheck = s.pm.check.bind(s.pm);

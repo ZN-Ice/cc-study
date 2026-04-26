@@ -6,7 +6,7 @@
  * results to be truncated and the parent LLM to re-invoke Agent tools.
  */
 
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { describe, test, expect } from "vitest";
 import { createUserMessage, createAssistantMessage, normalizeForAPI } from "../../src/messages.js";
 import type { ContentBlock } from "../../src/messages.js";
 

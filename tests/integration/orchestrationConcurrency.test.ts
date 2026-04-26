@@ -11,7 +11,7 @@
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { ToolContext } from "../../src/tools/types.js";
@@ -25,7 +25,7 @@ interface SetupResult {
   registry: import("../../src/tools/registry.js").ToolRegistry;
   pm: import("../../src/tools/orchestration.js").executeAllToolBatches extends (
     ...args: infer A
-  ) => infer _R
+  ) => unknown
     ? A[3] extends infer P | undefined
       ? P
       : never
@@ -147,9 +147,7 @@ describe("Tool orchestration concurrency integration", () => {
       { type: "tool_use", id: "3", name: "Read", input: { file_path: join(tmpDir, "c.txt") } },
     ];
 
-    const start = Date.now();
     const results = await executeAllToolBatches(blocks, registry, ctx, pm);
-    const elapsed = Date.now() - start;
 
     expect(results).toHaveLength(3);
     expect(results.every((r) => !r.is_error)).toBe(true);

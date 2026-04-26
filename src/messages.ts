@@ -131,8 +131,12 @@ export function normalizeForAPI(messages: readonly Message[]): APIMessage[] {
     role: msg.type === "user" ? "user" : "assistant",
     content: msg.content.map((block) => {
       if (block.type === "tool_result") {
-        const { tool_name: _, tool_input: __, metadata: ___, ...apiBlock } = block;
-        return apiBlock;
+        return {
+          type: block.type,
+          tool_use_id: block.tool_use_id,
+          content: block.content,
+          is_error: block.is_error,
+        };
       }
       return block;
     }),

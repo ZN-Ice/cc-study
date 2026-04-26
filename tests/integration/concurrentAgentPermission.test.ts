@@ -20,7 +20,6 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { APIConfig } from "../../src/services/api.js";
 import type { StreamEvent } from "../../src/services/api.js";
-import type { ToolContext } from "../../src/tools/types.js";
 
 // ── Mocks ──────────────────────────────────────────────────────────
 
