@@ -40,6 +40,8 @@ export interface ToolContext {
   apiConfig?: import("../services/api.js").APIConfig;
   /** Parent tool registry for sub-agent tool filtering (used by AgentTool) */
   toolRegistry?: import("./registry.js").ToolRegistry;
+  /** Progress callback for sub-agent execution */
+  onAgentProgress?: import("./AgentTool/types.js").OnAgentProgress;
 }
 
 // ──────────────────────────────────────────────

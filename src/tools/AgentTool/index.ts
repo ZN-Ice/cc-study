@@ -101,6 +101,8 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
         parentRegistry,
         context,
         maxTurns: agentDef.maxTurns,
+        description: input.description,
+        onProgress: context.onAgentProgress,
       });
 
       return {

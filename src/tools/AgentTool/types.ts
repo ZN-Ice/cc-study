@@ -92,6 +92,21 @@ export interface AgentToolResult {
 }
 
 // ──────────────────────────────────────────────
+// Agent Progress Callback
+// ──────────────────────────────────────────────
+
+/** Progress event emitted during agent execution */
+export interface AgentProgressEvent {
+  readonly agentType: string;
+  readonly description?: string;
+  readonly toolUseCount: number;
+  readonly startTime: number;
+}
+
+/** Callback type for agent progress updates */
+export type OnAgentProgress = (event: AgentProgressEvent) => void;
+
+// ──────────────────────────────────────────────
 // Agent Definition Registry
 // ──────────────────────────────────────────────
 

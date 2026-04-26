@@ -10,7 +10,7 @@
  * 4. Returns the final text result
  */
 
-import type { AgentDefinition, AgentToolResult } from "./types.js";
+import type { AgentDefinition, AgentToolResult, OnAgentProgress } from "./types.js";
 import type { ToolContext } from "../types.js";
 import type { APIConfig } from "../../services/api.js";
 import { ToolRegistry } from "../registry.js";
@@ -159,6 +159,10 @@ export interface RunSubAgentParams {
   readonly parentRegistry: ToolRegistry;
   readonly context: ToolContext;
   readonly maxTurns?: number;
+  /** Description of what this agent is doing (from tool input) */
+  readonly description?: string;
+  /** Callback for progress updates during agent execution */
+  readonly onProgress?: OnAgentProgress;
 }
 
 /**
@@ -177,6 +181,8 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
     parentRegistry,
     context,
     maxTurns,
+    description,
+    onProgress,
   } = params;
 
   const startTime = Date.now();
@@ -247,6 +253,14 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
 
     // Execute tools using partition + batch strategy (concurrent for safe tools)
     totalToolUseCount += toolUseBlocks.length;
+
+    // Emit progress to parent
+    onProgress?.({
+      agentType: agentDefinition.agentType,
+      description,
+      toolUseCount: totalToolUseCount,
+      startTime,
+    });
 
     if (context.abortSignal.aborted) break;
 

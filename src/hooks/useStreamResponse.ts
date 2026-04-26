@@ -7,6 +7,7 @@ import { executeAllToolBatches } from "../tools/orchestration.js";
 import type { PermissionManager } from "../permissions/manager.js";
 import type { PermissionDecision } from "../permissions/types.js";
 import type { PermissionRequest } from "../components/PermissionConfirm.js";
+import type { AgentProgressEvent } from "../tools/AgentTool/types.js";
 
 interface UseStreamResponseReturn {
   readonly isLoading: boolean;
@@ -20,6 +21,8 @@ interface UseStreamResponseReturn {
   readonly respondToPermission: (allowed: boolean, alwaysAllow: boolean) => void;
   /** Names of tools currently being executed */
   readonly executingTools: readonly string[];
+  /** Agent progress during sub-agent execution, or null */
+  readonly agentProgress: AgentProgressEvent | null;
 }
 
 /**
@@ -112,6 +115,7 @@ export function useStreamResponse(
   const [error, setError] = useState<string | null>(null);
   const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
   const [executingTools, setExecutingTools] = useState<readonly string[]>([]);
+  const [agentProgress, setAgentProgress] = useState<AgentProgressEvent | null>(null);
   const permissionResolveRef = useRef<((result: { allowed: boolean; alwaysAllow: boolean }) => void) | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef(messages);
@@ -252,6 +256,9 @@ export function useStreamResponse(
               abortSignal: controller.signal,
               apiConfig: config,
               toolRegistry: toolRegistry,
+              onAgentProgress: (event) => {
+                setAgentProgress(event);
+              },
             };
 
             if (controller.signal.aborted) break;
@@ -277,8 +284,9 @@ export function useStreamResponse(
               });
             }
 
-            // Clear executing tools
+            // Clear executing tools and agent progress
             setExecutingTools([]);
+            setAgentProgress(null);
           }
 
           // Create user message with tool results
@@ -300,11 +308,12 @@ export function useStreamResponse(
         setIsLoading(false);
         setStreamingText(null);
         setExecutingTools([]);
+        setAgentProgress(null);
         abortControllerRef.current = null;
       }
     },
     [config, setMessages, toolRegistry, toolContext],
   );
 
-  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools };
+  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, agentProgress };
 }

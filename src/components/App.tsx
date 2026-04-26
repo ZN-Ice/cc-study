@@ -16,6 +16,7 @@ import type { ToolContext } from "../tools/types.js";
 import { PermissionManager } from "../permissions/manager.js";
 import { getProjectSettingsPath } from "../permissions/config.js";
 import { PermissionConfirm } from "./PermissionConfirm.js";
+import { AgentProgress } from "./AgentProgress.js";
 
 interface AppProps {
   readonly model: string;
@@ -66,7 +67,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     tools: toolRegistry.getToolDefinitions(),
   };
 
-  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools } =
+  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, agentProgress } =
     useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);
 
   const requestExit = useCallback(() => {
@@ -135,11 +136,21 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       )}
 
       {/* Loading spinner */}
-      {isLoading && executingTools.length > 0 && !permissionRequest && (
+      {isLoading && !agentProgress && executingTools.length > 0 && !permissionRequest && (
         <Spinner mode="executing" toolNames={executingTools} />
       )}
       {isLoading && !streamingText && executingTools.length === 0 && !permissionRequest && <Spinner mode="thinking" />}
       {isLoading && streamingText && executingTools.length === 0 && !permissionRequest && <Spinner mode="responding" />}
+
+      {/* Agent progress display */}
+      {agentProgress && (
+        <AgentProgress
+          agentType={agentProgress.agentType}
+          description={agentProgress.description}
+          toolUseCount={agentProgress.toolUseCount}
+          startTime={agentProgress.startTime}
+        />
+      )}
 
       {/* Permission confirmation dialog */}
       {permissionRequest && (
