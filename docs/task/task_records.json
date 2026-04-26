@@ -805,11 +805,11 @@
     "source_ref": "free-code/src/tools/",
     "task_desc": "为 Tool 接口添加 extractSearchText 方法：从工具执行结果中提取搜索文本，供上下文压缩（/compact）和结果索引使用",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-12 18:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "参考 docs/user-study-note/phase2-tool-interface-analysis.md §4.2：extractSearchText 详解"
+    "finish_time": "2026-04-26 21:59:00",
+    "check_result": "通过",
+    "remark": "Tool接口添加extractSearchText可选方法，用于从执行结果提取搜索文本供/compact上下文压缩使用。556个测试全部通过"
   },
   {
     "task_id": "P6007",
