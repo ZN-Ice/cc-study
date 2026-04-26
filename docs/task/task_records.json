@@ -777,11 +777,11 @@
     "source_ref": null,
     "task_desc": "实现 Hook 系统：PreToolUse、PostToolUse、Stop 三种 Hook 类型和执行器",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "Hook 通过 settings.json 配置，Shell 命令执行"
+    "finish_time": "2026-04-26 21:55:00",
+    "check_result": "通过",
+    "remark": "实现 src/hooks/ 模块：types.ts类型定义(PreToolUse/PostToolUse/Stop)、runner.ts HookRunner执行器(短路返回false/错误静默处理)、config.ts设置加载、index.ts统一导出。17个测试全部通过，lint/typecheck/build通过"
   },
   {
     "task_id": "P6006",
