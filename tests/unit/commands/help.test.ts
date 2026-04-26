@@ -180,11 +180,13 @@ describe('memoryCommand', () => {
     expect(result.value).toContain('reference')
   })
 
-  it('call shows error for unknown memory type', async () => {
+  it('call shows overview for unknown memory type', async () => {
     const module = await memoryCommand.load()
     const result = await module.call('unknown', {})
     expect(result.type).toBe('text')
-    expect(result.value).toContain('Unknown memory type')
+    // Unknown type is treated as no args, shows overview
+    expect(result.value).toContain('Memory')
+    expect(result.value).toContain('## Usage')
   })
 
   it('call shows valid memory types', async () => {

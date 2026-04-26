@@ -791,11 +791,11 @@
     "source_ref": null,
     "task_desc": "实现记忆系统：MemoryReadTool、MemoryWriteTool、MEMORY.md 索引管理",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-02 10:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "记忆文件存储在 .claude/projects/ 目录下"
+    "finish_time": "2026-04-26 21:58:00",
+    "check_result": "通过",
+    "remark": "增强/memory命令支持读写：parseMemoryArgs解析读写命令、writeMemoryFile写入文件、updateMemoryIndex更新MEMORY.md索引。25个测试全部通过，lint/typecheck/build通过"
   },
   {
     "task_id": "P6008",
