@@ -69,6 +69,20 @@ export interface Tool<T extends z.ZodType = z.ZodType> {
   /** Zod schema defining the tool's input parameters */
   readonly inputSchema: T;
 
+  /**
+   * Optional raw JSON Schema to use in API tool definitions.
+   * When set, this is sent to the model directly instead of converting
+   * inputSchema (Zod) to JSON Schema. Used by MCP tools to preserve
+   * the server's original parameter definitions so the model sends
+   * correct parameter names and types.
+   */
+  readonly apiInputSchema?: {
+    type: "object";
+    properties?: Record<string, unknown>;
+    required?: string[];
+    [key: string]: unknown;
+  };
+
   /** Whether user confirmation is required before execution */
   readonly requiresConfirmation?: boolean;
 

@@ -133,4 +133,48 @@ describe("createMcpTool", () => {
     const tool = createMcpTool("test", mockToolInfo, manager);
     expect(tool.isConcurrencySafe?.({ query: "test" })).toBe(false);
   });
+
+  test("preserves original MCP inputSchema for API tool definitions", () => {
+    const tool = createMcpTool("test", mockToolInfo, manager);
+    // The tool must expose the MCP server's original inputSchema so the API
+    // knows what parameters to send. Without this, the model sends {} or
+    // guesses wrong parameter names, causing MCP server errors.
+    expect(tool.apiInputSchema).toBeDefined();
+    expect(tool.apiInputSchema!.type).toBe("object");
+    expect(tool.apiInputSchema!.properties).toHaveProperty("query");
+    expect(tool.apiInputSchema!.required).toContain("query");
+  });
+
+  test("apiInputSchema preserves complex nested schemas", () => {
+    const complexSchema = {
+      type: "object" as const,
+      properties: {
+        search_query: { type: "string", description: "Search query" },
+        limit: { type: "number", description: "Max results" },
+        filters: {
+          type: "object",
+          properties: {
+            date_range: { type: "string" },
+            source: { type: "string" },
+          },
+        },
+      },
+      required: ["search_query"],
+    };
+    const tool = createMcpTool("web-search", {
+      ...mockToolInfo,
+      inputSchema: complexSchema,
+    }, manager);
+    expect(tool.apiInputSchema).toEqual(complexSchema);
+  });
+
+  test("apiInputSchema defaults to empty object schema when not provided", () => {
+    const tool = createMcpTool("test", {
+      ...mockToolInfo,
+      inputSchema: {},
+    }, manager);
+    expect(tool.apiInputSchema).toBeDefined();
+    expect(tool.apiInputSchema!.type).toBe("object");
+    expect(tool.apiInputSchema!.properties).toEqual({});
+  });
 });

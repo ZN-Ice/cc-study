@@ -37,10 +37,23 @@ export function createMcpTool(
       ? toolInfo.description.slice(0, MAX_DESCRIPTION_LENGTH - 3) + "..."
       : toolInfo.description;
 
+  // Preserve the MCP server's original inputSchema for API definitions
+  // so the model knows the actual parameter names and types.
+  // Falls back to a minimal object schema if the server doesn't provide one.
+  const apiInputSchema = toolInfo.inputSchema?.type
+    ? (toolInfo.inputSchema as {
+        type: "object";
+        properties?: Record<string, unknown>;
+        required?: string[];
+        [key: string]: unknown;
+      })
+    : { type: "object" as const, properties: {} };
+
   return {
     name: fullName,
     description,
     inputSchema: McpInputSchema,
+    apiInputSchema,
 
     async validateInput(): Promise<{ ok: true }> {
       return { ok: true };
