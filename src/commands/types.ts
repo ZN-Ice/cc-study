@@ -50,6 +50,20 @@ export type ResumeEntrypoint =
 
 export type CommandAvailability = 'claude-ai' | 'console'
 
+/**
+ * Sub-command definition for hierarchical commands
+ */
+export interface SubCommand {
+  /** Sub-command name (e.g., 'user', 'write') */
+  name: string
+  /** Description shown in autocomplete */
+  description: string
+  /** Whether this sub-command completes the command */
+  completesCommand?: boolean
+  /** Nested sub-commands for further parameter selection */
+  subCommands?: SubCommand[]
+}
+
 export interface CommandBase {
   name: string
   description: string
@@ -67,6 +81,8 @@ export interface CommandBase {
   immediate?: boolean
   isSensitive?: boolean
   userFacingName?: () => string
+  /** Sub-commands for hierarchical commands like /memory */
+  subCommands?: SubCommand[]
 }
 
 // ============================================================================

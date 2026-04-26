@@ -16,7 +16,43 @@
  * MEMORY.md serves as the index file that tracks all memory entries.
  */
 
-import type { Command, CommandContext, LocalCommandResult } from "../types.js";
+import type { Command, CommandContext, LocalCommandResult, SubCommand } from "../types.js";
+
+// Memory sub-commands with nested actions
+const memorySubCommands: SubCommand[] = [
+  {
+    name: "user",
+    description: "User preferences and habits",
+    completesCommand: false,
+    subCommands: [
+      { name: "write", description: "Write to user memory", completesCommand: false },
+    ],
+  },
+  {
+    name: "feedback",
+    description: "User corrections and preferences",
+    completesCommand: false,
+    subCommands: [
+      { name: "write", description: "Write to feedback memory", completesCommand: false },
+    ],
+  },
+  {
+    name: "project",
+    description: "Project-specific information",
+    completesCommand: false,
+    subCommands: [
+      { name: "write", description: "Write to project memory", completesCommand: false },
+    ],
+  },
+  {
+    name: "reference",
+    description: "External system references",
+    completesCommand: false,
+    subCommands: [
+      { name: "write", description: "Write to reference memory", completesCommand: false },
+    ],
+  },
+]
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
@@ -32,6 +68,7 @@ export const memoryCommand: Command = {
   isHidden: false,
   userInvocable: true,
   supportsNonInteractive: true,
+  subCommands: memorySubCommands,
   load: async () => {
     return { call: memoryCall };
   },

@@ -19,8 +19,7 @@ import { PermissionManager } from "../permissions/manager.js";
 import { getProjectSettingsPath } from "../permissions/config.js";
 import { PermissionConfirm } from "./PermissionConfirm.js";
 import { AgentProgress } from "./AgentProgress.js";
-import { findCommand } from "../commands/index.js";
-import { parseSlashCommand } from "../commands/slashCommandParser.js";
+import { executeCommand } from "../commands/executor.js";
 import type { CommandContext } from "../commands/types.js";
 
 interface AppProps {
@@ -138,64 +137,15 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     }
   });
 
-  // Execute a slash command and return the result text
   const executeSlashCommand = useCallback(
     async (input: string): Promise<string | null> => {
-      const trimmed = input.trim();
-      if (!trimmed.startsWith("/")) {
-        return null;
-      }
-
-      const parsed = parseSlashCommand(trimmed);
-      if (!parsed) {
-        return `Unknown slash command format: ${trimmed}`;
-      }
-
-      const command = findCommand(parsed.commandName);
-      if (!command) {
-        return `Command not found: /${parsed.commandName}`;
-      }
-
-      // Check if command is enabled
-      if (command.isEnabled && !command.isEnabled()) {
-        return `Command /${command.name} is currently disabled`;
-      }
-
       const commandContext: CommandContext = {
         abortSignal: new AbortController().signal,
         workingDirectory: process.cwd(),
         canUseTool: (toolName: string) => toolRegistry.has(toolName),
       };
 
-      // Execute based on command type
-      if (command.type === "local") {
-        const module = await command.load();
-        const result = await module.call(parsed.args, commandContext);
-        if (result.type === "text") {
-          return result.value;
-        }
-        return null;
-      }
-
-      if (command.type === "local-jsx") {
-        const module = await command.load();
-        await module.call(
-          (_output?: string) => {
-            // The component handles its own rendering via onDone callback
-          },
-          commandContext,
-          parsed.args,
-        );
-        // LocalJSXCommand returns React component for rendering
-        // For now, return null to skip adding a message
-        return null;
-      }
-
-      if (command.type === "prompt") {
-        return `Command /${command.name} is not yet implemented for direct invocation`;
-      }
-
-      return null;
+      return executeCommand(input, commandContext);
     },
     [toolRegistry],
   );

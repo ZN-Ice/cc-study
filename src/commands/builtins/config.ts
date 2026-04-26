@@ -6,7 +6,14 @@
  * In cc-study CLI, we output configuration as text instead of rendering a full UI.
  */
 
-import type { Command, CommandContext, LocalCommandResult } from '../types.js'
+import type { Command, CommandContext, LocalCommandResult, SubCommand } from '../types.js'
+
+const configSubCommands: SubCommand[] = [
+  { name: 'permissionMode', description: 'Permission mode (allow/deny/ask)' },
+  { name: 'model', description: 'Default model to use' },
+  { name: 'maxTokens', description: 'Maximum tokens per response' },
+  { name: 'temperature', description: 'Response temperature' },
+]
 
 export const configCommand: Command = {
   type: 'local',
@@ -18,6 +25,7 @@ export const configCommand: Command = {
   isHidden: false,
   userInvocable: true,
   supportsNonInteractive: true,
+  subCommands: configSubCommands,
   load: async () => {
     return { call: configCall }
   },

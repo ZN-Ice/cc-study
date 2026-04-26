@@ -106,6 +106,7 @@ export type {
   LocalJSXCommand,
   ResumeEntrypoint,
   CommandResultDisplay,
+  SubCommand,
 } from './types.js'
 
 export { getCommandName, isCommandEnabled } from './types.js'
