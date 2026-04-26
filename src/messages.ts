@@ -124,10 +124,17 @@ interface APIMessage {
 
 /**
  * Convert internal messages to the format expected by the Anthropic API.
+ * Strips internal-only fields (tool_name, tool_input, metadata) from tool_result blocks.
  */
 export function normalizeForAPI(messages: readonly Message[]): APIMessage[] {
   return messages.map((msg) => ({
     role: msg.type === "user" ? "user" : "assistant",
-    content: msg.content,
+    content: msg.content.map((block) => {
+      if (block.type === "tool_result") {
+        const { tool_name: _, tool_input: __, metadata: ___, ...apiBlock } = block;
+        return apiBlock;
+      }
+      return block;
+    }),
   }));
 }

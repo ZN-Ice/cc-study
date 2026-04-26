@@ -85,6 +85,7 @@ async function collectStreamResponse(
 ): Promise<{ content: ContentBlock[]; stopReason: string | null }> {
   const blocks: ContentBlock[] = [];
   let currentTextIndex = -1;
+  let textBlockCount = 0;
   let currentToolIndex = -1;
   let toolInputJson = "";
   let toolBlock: { id: string; name: string } | null = null;
@@ -95,7 +96,8 @@ async function collectStreamResponse(
       case "content_block_start": {
         const block = event.content_block;
         if (block.type === "text") {
-          currentTextIndex = event.index;
+          currentTextIndex = textBlockCount;
+          textBlockCount++;
           blocks.push({ type: "text", text: block.text ?? "" });
         } else if (block.type === "tool_use") {
           currentToolIndex = event.index;
