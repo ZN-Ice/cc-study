@@ -155,7 +155,25 @@ Has paths`,
   });
 
   it("loads real project test-skill from .claude/skills", async () => {
+    // Create a real skill directory to ensure CI environment has it
     const projectRoot = join(process.cwd(), ".claude", "skills");
+    const skillDir = join(projectRoot, "test-skill");
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(
+      join(skillDir, "SKILL.md"),
+      `---
+name: test-skill
+description: A test skill for development
+when_to_use: Use when testing the skills system
+allowed_tools: [Read, Glob]
+user_invocable: true
+---
+
+# Test Skill
+
+This is a test skill for development and testing purposes.`,
+    );
+
     const result = await loadAllSkills({ projectSkillsDirs: [projectRoot] });
     expect(result.skills.length).toBeGreaterThanOrEqual(1);
 
@@ -163,5 +181,7 @@ Has paths`,
     expect(testSkill).toBeDefined();
     expect(testSkill!.description).toContain("test skill");
     expect(testSkill!.userInvocable).toBe(true);
+
+    rmSync(skillDir, { recursive: true });
   });
 });
