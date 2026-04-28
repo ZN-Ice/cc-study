@@ -5,13 +5,28 @@
 
 import React, { useMemo } from "react";
 import { Box, Text } from "ink";
-import { getCommands, getCommandName } from "../commands/index.js";
-import type { Command, SubCommand } from "../commands/types.js";
+import { getCommands } from "../commands/index.js";
+import type { SubCommand } from "../commands/types.js";
+import type { SkillCommand } from "../skills/types.js";
+
+/** Get display name from an autocomplete item */
+function getItemName(item: AutocompleteItem): string {
+  return item.name;
+}
+
+/** Minimal interface for autocomplete items (builtins + skills) */
+export interface AutocompleteItem {
+  name: string;
+  description?: string;
+  isHidden?: boolean;
+  userInvocable?: boolean;
+  subCommands?: SubCommand[];
+}
 
 export interface CommandSelectorResult {
-  commands: Command[];
+  commands: AutocompleteItem[];
   subCommands: SubCommand[];
-  currentCommand: Command | null;
+  currentCommand: AutocompleteItem | null;
   depth: number;
   showSubCommands: boolean;
 }
@@ -19,11 +34,27 @@ export interface CommandSelectorResult {
 interface CommandSelectorProps {
   readonly filter: string;
   readonly selectedIndex: number;
+  readonly skills?: SkillCommand[];
 }
 
-export function resolveCommandFilter(filter: string): CommandSelectorResult {
+export function resolveCommandFilter(
+  filter: string,
+  skills?: SkillCommand[],
+): CommandSelectorResult {
   const allCommands = getCommands();
-  const visibleCommands = allCommands.filter(
+
+  // Convert skills to AutocompleteItem for uniform handling
+  const skillItems: AutocompleteItem[] = (skills ?? [])
+    .filter((s) => s.userInvocable && !s.isHidden)
+    .map((s) => ({
+      name: s.name,
+      description: s.description,
+      userInvocable: s.userInvocable,
+      isHidden: s.isHidden,
+    }));
+
+  const allAvailable: AutocompleteItem[] = [...allCommands, ...skillItems];
+  const visibleCommands = allAvailable.filter(
     (cmd) => !cmd.isHidden && cmd.userInvocable,
   );
 
@@ -38,14 +69,14 @@ export function resolveCommandFilter(filter: string): CommandSelectorResult {
 
   const cmdName = parts[0];
   const cmd = visibleCommands.find(
-    (c) => getCommandName(c).toLowerCase() === cmdName.toLowerCase(),
+    (c) => getItemName(c).toLowerCase() === cmdName.toLowerCase(),
   );
 
   // No command matched or no sub-commands → filter top-level
   if (!cmd || !cmd.subCommands || cmd.subCommands.length === 0) {
     const filterLower = filter.toLowerCase();
     const filtered = visibleCommands.filter((c) => {
-      const name = getCommandName(c).toLowerCase();
+      const name = getItemName(c).toLowerCase();
       const description = c.description?.toLowerCase() ?? "";
       return name.includes(filterLower) || description.includes(filterLower);
     });
@@ -91,8 +122,9 @@ export function resolveCommandFilter(filter: string): CommandSelectorResult {
 export const CommandSelector: React.FC<CommandSelectorProps> = ({
   filter,
   selectedIndex,
+  skills,
 }) => {
-  const result = useMemo(() => resolveCommandFilter(filter), [filter]);
+  const result = useMemo(() => resolveCommandFilter(filter, skills), [filter, skills]);
 
   const { showSubCommands, currentCommand, subCommands, commands, depth } = result;
 
@@ -101,7 +133,7 @@ export const CommandSelector: React.FC<CommandSelectorProps> = ({
     const displaySubCommands = subCommands.length > 0 ? subCommands : (currentCommand.subCommands || []);
 
     // Build the path label (e.g., "/memory user")
-    const pathParts = [getCommandName(currentCommand)];
+    const pathParts = [getItemName(currentCommand)];
     if (depth > 0 && filter) {
       const filterParts = filter.split(" ");
       for (let i = 1; i <= depth && i < filterParts.length; i++) {
@@ -157,7 +189,7 @@ export const CommandSelector: React.FC<CommandSelectorProps> = ({
     <Box flexDirection="column" paddingLeft={2}>
       <Text dimColor>Available commands:</Text>
       {commands.map((cmd, index) => {
-        const name = getCommandName(cmd);
+        const name = getItemName(cmd);
         const isSelected = index === selectedIndex;
         const hasSubCommands = cmd.subCommands && cmd.subCommands.length > 0;
         return (

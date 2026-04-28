@@ -21,6 +21,10 @@ import { PermissionConfirm } from "./PermissionConfirm.js";
 import { AgentProgress } from "./AgentProgress.js";
 import { executeCommand } from "../commands/executor.js";
 import type { CommandContext } from "../commands/types.js";
+import { loadAllSkills } from "../skills/loader.js";
+import { initBundledSkills, getBundledSkills } from "../skills/index.js";
+import { setSkillLookup } from "../tools/SkillTool/index.js";
+import type { SkillCommand } from "../skills/types.js";
 
 interface AppProps {
   readonly model: string;
@@ -42,6 +46,11 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
   // Bumped when MCP tools are loaded, so apiConfig.tools refreshes
   const [mcpRevision, setMcpRevision] = useState(0);
   const mcpLoadResultRef = useRef<McpLoadResult | null>(null);
+
+  // Skills state: loaded from .claude/skills/ + bundled skills
+  const [loadedSkills, setLoadedSkills] = useState<SkillCommand[]>([]);
+  // Init bundled skills once on mount
+  useEffect(() => { initBundledSkills(); }, []);
 
   // Create permission manager with default rules (allow read-only, ask for writes/bash)
   const permissionManager = useMemo(() => {
@@ -82,6 +91,28 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     return () => {
       mcpLoadResultRef.current?.clientManager.disconnectAll().catch(() => {});
     };
+  }, []);
+
+  // Load skills from directories + bundled registry on startup
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const userSkillsDir = `${process.env.HOME}/.claude/skills`;
+      const projectSkillsDir = `${process.cwd()}/.claude/skills`;
+      const { skills: dirSkills } = await loadAllSkills({
+        userSkillsDir,
+        projectSkillsDirs: [projectSkillsDir],
+      });
+      if (cancelled) return;
+
+      const bundled = getBundledSkills();
+      const all = [...bundled, ...dirSkills];
+      setLoadedSkills(all);
+
+      // Wire up SkillTool lookup
+      setSkillLookup((name: string) => all.find((s) => s.name === name));
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const toolContext = useMemo<Partial<ToolContext>>(
@@ -138,16 +169,16 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
   });
 
   const executeSlashCommand = useCallback(
-    async (input: string): Promise<string | null> => {
+    async (input: string) => {
       const commandContext: CommandContext = {
         abortSignal: new AbortController().signal,
         workingDirectory: process.cwd(),
         canUseTool: (toolName: string) => toolRegistry.has(toolName),
       };
 
-      return executeCommand(input, commandContext);
+      return executeCommand(input, commandContext, loadedSkills);
     },
-    [toolRegistry],
+    [toolRegistry, loadedSkills],
   );
 
   const handleSubmit = useCallback(
@@ -158,9 +189,14 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       if (value.trim().startsWith("/")) {
         const result = await executeSlashCommand(value);
         if (result) {
-          // Add command result as a system message
-          const systemMessage = createSystemMessage(result);
-          setMessages((prev) => [...prev, systemMessage]);
+          if (result.isSkill) {
+            // Skill: send prompt content to the LLM for interactive processing
+            void sendMessage(result.text);
+          } else {
+            // Builtin command: display result as a system message
+            const systemMessage = createSystemMessage(result.text);
+            setMessages((prev) => [...prev, systemMessage]);
+          }
         }
         return;
       }
@@ -233,6 +269,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
           onSubmit={handleSubmit}
           isLoading={isLoading}
           placeholder={isLoading ? "Waiting for response..." : "Type a message... (Esc to quit)"}
+          skills={loadedSkills}
         />
       </Box>
 

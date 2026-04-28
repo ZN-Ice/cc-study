@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useMemo, useRef, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import { CommandSelector, resolveCommandFilter } from "./CommandSelector.js";
+import type { SkillCommand } from "../skills/types.js";
 
 interface PromptInputProps {
   readonly value: string;
@@ -8,6 +9,7 @@ interface PromptInputProps {
   readonly onSubmit: (value: string) => void;
   readonly isLoading: boolean;
   readonly placeholder?: string;
+  readonly skills?: SkillCommand[];
 }
 
 export const PromptInput: React.FC<PromptInputProps> = ({
@@ -16,6 +18,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   onSubmit,
   isLoading,
   placeholder = "Type a message...",
+  skills,
 }) => {
   const [cursorOffset, setCursorOffset] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -31,8 +34,8 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 
   // Resolve what the selector should show
   const selectorResult = useMemo(
-    () => resolveCommandFilter(commandFilter),
-    [commandFilter],
+    () => resolveCommandFilter(commandFilter, skills),
+    [commandFilter, skills],
   );
 
   // Determine if selector should be visible
@@ -261,6 +264,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
         <CommandSelector
           filter={commandFilter}
           selectedIndex={selectedIndex}
+          skills={skills}
         />
       )}
       <Box>

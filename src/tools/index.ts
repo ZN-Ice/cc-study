@@ -14,6 +14,7 @@ export { BashTool } from "./BashTool.js";
 export { GlobTool } from "./GlobTool.js";
 export { GrepTool } from "./GrepTool.js";
 export { AgentTool } from "./AgentTool/index.js";
+export { SkillTool } from "./SkillTool/index.js";
 export { createMcpTool, normalizeMcpName } from "./MCPTool.js";
 
 import { ToolRegistry } from "./registry.js";
@@ -24,6 +25,7 @@ import { BashTool } from "./BashTool.js";
 import { GlobTool } from "./GlobTool.js";
 import { GrepTool } from "./GrepTool.js";
 import { AgentTool } from "./AgentTool/index.js";
+import { SkillTool } from "./SkillTool/index.js";
 import { createMcpTool } from "./MCPTool.js";
 import { loadMcpConfig } from "../services/mcpConfig.js";
 import { McpClientManager } from "../services/mcpClient.js";
@@ -38,6 +40,7 @@ export function createDefaultRegistry(): ToolRegistry {
   registry.register(GlobTool);
   registry.register(GrepTool);
   registry.register(AgentTool);
+  registry.register(SkillTool);
   return registry;
 }
 
