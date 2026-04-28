@@ -14,7 +14,7 @@ import type { PermissionDecision } from "../../permissions/types.js";
 import type { SkillCommand } from "../../skills/types.js";
 import { recordSkillUsage } from "../../skills/usageTracking.js";
 import { SKILL_TOOL_NAME } from "./constants.js";
-import { getSkillToolDescription } from "./prompt.js";
+import { getSkillToolDescription, formatSkillsWithinBudget } from "./prompt.js";
 
 // ──────────────────────────────────────────────
 // Input Schema
@@ -58,11 +58,20 @@ type SkillLookup = (name: string) => SkillCommand | undefined;
 
 let skillLookupFn: SkillLookup = () => undefined;
 
+/** Module-level skills array for dynamic description generation */
+let allSkills: SkillCommand[] = [];
+
 /**
- * Set the skill lookup function (called during REPL initialization).
+ * Set the skill lookup function and skill list (called during REPL initialization).
  */
-export function setSkillLookup(fn: SkillLookup): void {
+export function setSkillLookup(fn: SkillLookup, skills: SkillCommand[] = []): void {
   skillLookupFn = fn;
+  allSkills = skills;
+}
+
+/** Get current skill list (for testing/debugging) */
+export function getSkillList(): SkillCommand[] {
+  return allSkills;
 }
 
 function normalizeSkillName(raw: string): string {
@@ -94,8 +103,17 @@ function ruleMatchesSkill(ruleContent: string | undefined, commandName: string):
 
 export const SkillTool: Tool<typeof skillInputSchema> = {
   name: SKILL_TOOL_NAME,
-  description: getSkillToolDescription(),
   inputSchema: skillInputSchema,
+
+  get description(): string {
+    // Dynamically build description with current skill list
+    const baseDesc = getSkillToolDescription();
+    const skillList = formatSkillsWithinBudget(allSkills);
+    if (!skillList) {
+      return baseDesc;
+    }
+    return `${baseDesc}\n\n## Available skills\n${skillList}`;
+  },
 
   async validateInput(input): Promise<ValidationResult> {
     const trimmed = input.skill?.trim();

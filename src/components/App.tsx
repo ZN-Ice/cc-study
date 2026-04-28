@@ -109,8 +109,8 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       const all = [...bundled, ...dirSkills];
       setLoadedSkills(all);
 
-      // Wire up SkillTool lookup
-      setSkillLookup((name: string) => all.find((s) => s.name === name));
+      // Wire up SkillTool lookup and skill list for dynamic description
+      setSkillLookup((name: string) => all.find((s) => s.name === name), all);
     })();
     return () => { cancelled = true; };
   }, []);

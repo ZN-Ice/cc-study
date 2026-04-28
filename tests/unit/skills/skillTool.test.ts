@@ -49,7 +49,7 @@ function makeAllowRule(content: string): PermissionRule {
 describe("SkillTool", () => {
   beforeEach(() => {
     clearUsageData();
-    setSkillLookup(() => undefined);
+    setSkillLookup(() => undefined, []);
   });
 
   // ──────────────────────────────────────────────
@@ -68,7 +68,7 @@ describe("SkillTool", () => {
   });
 
   test("rejects unknown skill", async () => {
-    setSkillLookup(() => undefined);
+    setSkillLookup(() => undefined, []);
     const result = await SkillTool.validateInput({ skill: "nonexistent" }, {
       workingDirectory: "/tmp",
       abortSignal: new AbortController().signal,
@@ -80,8 +80,10 @@ describe("SkillTool", () => {
   });
 
   test("accepts valid skill", async () => {
-    setSkillLookup((name) =>
-      name === "review" ? makeMockSkill({ name: "review" }) : undefined,
+    const skill = makeMockSkill({ name: "review" });
+    setSkillLookup(
+      (name) => (name === "review" ? skill : undefined),
+      [skill],
     );
     const result = await SkillTool.validateInput({ skill: "review" }, {
       workingDirectory: "/tmp",
@@ -91,8 +93,10 @@ describe("SkillTool", () => {
   });
 
   test("strips leading slash before lookup", async () => {
-    setSkillLookup((name) =>
-      name === "review" ? makeMockSkill({ name: "review" }) : undefined,
+    const skill = makeMockSkill({ name: "review" });
+    setSkillLookup(
+      (name) => (name === "review" ? skill : undefined),
+      [skill],
     );
     const result = await SkillTool.validateInput({ skill: "/review" }, {
       workingDirectory: "/tmp",
@@ -102,7 +106,7 @@ describe("SkillTool", () => {
   });
 
   test("rejects skill with disableModelInvocation", async () => {
-    setSkillLookup(() => makeMockSkill({ disableModelInvocation: true }));
+    setSkillLookup(() => makeMockSkill({ disableModelInvocation: true }), []);
     const result = await SkillTool.validateInput({ skill: "internal" }, {
       workingDirectory: "/tmp",
       abortSignal: new AbortController().signal,
@@ -118,7 +122,7 @@ describe("SkillTool", () => {
   // ──────────────────────────────────────────────
 
   test("denies when matching deny rule", async () => {
-    setSkillLookup(() => makeMockSkill());
+    setSkillLookup(() => makeMockSkill(), []);
     const result = await SkillTool.checkPermissions!(
       { skill: "test-skill" },
       {
@@ -135,7 +139,7 @@ describe("SkillTool", () => {
   });
 
   test("allows when matching allow rule", async () => {
-    setSkillLookup(() => makeMockSkill());
+    setSkillLookup(() => makeMockSkill(), []);
     const result = await SkillTool.checkPermissions!(
       { skill: "test-skill" },
       {
@@ -152,7 +156,7 @@ describe("SkillTool", () => {
   });
 
   test("auto-allows safe skills", async () => {
-    setSkillLookup(() => makeMockSkill());
+    setSkillLookup(() => makeMockSkill(), []);
     const result = await SkillTool.checkPermissions!(
       { skill: "test-skill" },
       {
@@ -168,7 +172,7 @@ describe("SkillTool", () => {
     const unsafeSkill = makeMockSkill({
       hooks: { preToolUse: [] as never[] },
     });
-    setSkillLookup(() => unsafeSkill);
+    setSkillLookup(() => unsafeSkill, []);
     const result = await SkillTool.checkPermissions!(
       { skill: "test-skill" },
       {
@@ -181,7 +185,7 @@ describe("SkillTool", () => {
   });
 
   test("prefix wildcard matches", async () => {
-    setSkillLookup(() => makeMockSkill({ name: "test-extended" }));
+    setSkillLookup(() => makeMockSkill({ name: "test-extended" }), []);
     const result = await SkillTool.checkPermissions!(
       { skill: "test-extended" },
       {
@@ -202,7 +206,7 @@ describe("SkillTool", () => {
   // ──────────────────────────────────────────────
 
   test("executes inline skill and returns content", async () => {
-    setSkillLookup(() => makeMockSkill({ name: "review" }));
+    setSkillLookup(() => makeMockSkill({ name: "review" }), []);
     const result = await SkillTool.execute(
       { skill: "review", args: "focus on security" },
       {
@@ -216,7 +220,7 @@ describe("SkillTool", () => {
   });
 
   test("returns error for unknown skill during execute", async () => {
-    setSkillLookup(() => undefined);
+    setSkillLookup(() => undefined, []);
     const result = await SkillTool.execute(
       { skill: "nonexistent" },
       {
@@ -228,8 +232,64 @@ describe("SkillTool", () => {
     expect(result.output).toContain("Unknown skill");
   });
 
+  // ──────────────────────────────────────────────
+  // Dynamic description (skill list in Tool.description)
+  // ──────────────────────────────────────────────
+
+  test("description excludes skill list section when no skills loaded", () => {
+    setSkillLookup(() => undefined, []);
+    // The base description has "Available skills are listed in system messages" as text
+    // but no "## Available skills" section heading (which is added only when skills exist)
+    expect(SkillTool.description).not.toContain("## Available skills");
+  });
+
+  test("description includes skill list when skills are set", () => {
+    const skill = makeMockSkill({
+      name: "my-skill",
+      description: "Does something useful",
+      userInvocable: true,
+      source: "bundled",
+      loadedFrom: "bundled",
+    });
+    setSkillLookup((name) => (name === "my-skill" ? skill : undefined), [skill]);
+    const desc = SkillTool.description;
+    expect(desc).toContain("## Available skills");
+    expect(desc).toContain("- my-skill:");
+    expect(desc).toContain("Does something useful");
+  });
+
+  test("description updates when skills change", () => {
+    setSkillLookup(() => undefined, []);
+    expect(SkillTool.description).not.toContain("## Available skills");
+
+    const mySkill = makeMockSkill({
+      name: "my-new-skill",
+      description: "A new skill",
+      source: "bundled",
+      loadedFrom: "bundled",
+    });
+    setSkillLookup((name) => (name === "my-new-skill" ? mySkill : undefined), [mySkill]);
+    expect(SkillTool.description).toContain("## Available skills");
+    expect(SkillTool.description).toContain("- my-new-skill:");
+  });
+
+  test("description includes project skills", () => {
+    const projectSkill = makeMockSkill({
+      name: "proj-skill",
+      description: "A project skill",
+      userInvocable: true,
+      source: "project",
+      loadedFrom: "skills",
+    });
+    setSkillLookup((name) => (name === "proj-skill" ? projectSkill : undefined), [projectSkill]);
+    const desc = SkillTool.description;
+    expect(desc).toContain("## Available skills");
+    expect(desc).toContain("- proj-skill:");
+    expect(desc).toContain("A project skill");
+  });
+
   test("records usage on execute", async () => {
-    setSkillLookup(() => makeMockSkill({ name: "review" }));
+    setSkillLookup(() => makeMockSkill({ name: "review" }), []);
     await SkillTool.execute(
       { skill: "review" },
       {
