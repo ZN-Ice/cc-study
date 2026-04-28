@@ -69,7 +69,7 @@ describe.skipIf(!hasApiKey)("API Integration", () => {
 
     // Verify content
     expect(fullText.length).toBeGreaterThan(0);
-  });
+  }, 30000);
 
   test("streamChat handles abort signal", async () => {
     const controller = new AbortController();

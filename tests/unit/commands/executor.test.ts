@@ -19,31 +19,32 @@ describe('executeCommand', () => {
     it('executes /config and returns text', async () => {
       const result = await executeCommand('/config', defaultContext)
       expect(result).not.toBeNull()
-      expect(result).toContain('Configuration')
+      expect(result!.text).toContain('Configuration')
+      expect(result!.isSkill).toBe(false)
     })
 
     it('executes /config with key arg', async () => {
       const result = await executeCommand('/config model', defaultContext)
       expect(result).not.toBeNull()
-      expect(result).toContain('model')
+      expect(result!.text).toContain('model')
     })
 
     it('executes /compact without setMessages', async () => {
       const result = await executeCommand('/compact', defaultContext)
       expect(result).not.toBeNull()
-      expect(result).toContain('No conversation to compact')
+      expect(result!.text).toContain('No conversation to compact')
     })
 
     it('executes /resume without args', async () => {
       const result = await executeCommand('/resume', defaultContext)
       expect(result).not.toBeNull()
-      expect(result).toContain('/resume')
+      expect(result!.text).toContain('/resume')
     })
 
     it('executes /memory and returns overview', async () => {
       const result = await executeCommand('/memory', defaultContext)
       expect(result).not.toBeNull()
-      expect(result).toContain('Memory')
+      expect(result!.text).toContain('Memory')
     })
   })
 
@@ -53,19 +54,20 @@ describe('executeCommand', () => {
     it('executes /help and returns text output', async () => {
       const result = await executeCommand('/help', defaultContext)
       expect(result).not.toBeNull()
-      expect(result).toContain('Available Commands')
+      expect(result!.text).toContain('Available Commands')
+      expect(result!.isSkill).toBe(false)
     })
 
     it('/help shows specific command details', async () => {
       const result = await executeCommand('/help compact', defaultContext)
       expect(result).not.toBeNull()
-      expect(result).toContain('/compact')
+      expect(result!.text).toContain('/compact')
     })
 
     it('/help handles unknown command args', async () => {
       const result = await executeCommand('/help nonexistent', defaultContext)
       expect(result).not.toBeNull()
-      expect(result).toContain('not found')
+      expect(result!.text).toContain('not found')
     })
   })
 
@@ -79,18 +81,19 @@ describe('executeCommand', () => {
 
     it('returns error for unknown command', async () => {
       const result = await executeCommand('/unknown', defaultContext)
-      expect(result).toContain('Command not found')
+      expect(result!.text).toContain('Command not found')
+      expect(result!.isSkill).toBe(false)
     })
 
     it('returns error for bare slash', async () => {
       const result = await executeCommand('/', defaultContext)
-      expect(result).toContain('Unknown slash command format')
+      expect(result!.text).toContain('Unknown slash command format')
     })
 
     it('handles whitespace around input', async () => {
       const result = await executeCommand('  /help  ', defaultContext)
       expect(result).not.toBeNull()
-      expect(result).toContain('Available Commands')
+      expect(result!.text).toContain('Available Commands')
     })
   })
 })

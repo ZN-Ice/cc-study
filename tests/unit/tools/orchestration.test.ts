@@ -234,6 +234,7 @@ describe("executeAllToolBatches", () => {
   test("handles mixed safe and unsafe tools", async () => {
     // Use real tools but with file paths that may not exist
     // This tests the partition + execution pipeline, not tool correctness
+    // GrepTool spawns rg --version to check availability; allow generous time in CI
     const results = await executeAllToolBatches(
       [
         { type: "tool_use" as const, id: "1", name: "Glob", input: { pattern: "*.nonexistent" } },
@@ -246,7 +247,7 @@ describe("executeAllToolBatches", () => {
     // Both are safe tools that should run concurrently
     expect(results.find((r) => r.tool_use_id === "1")).toBeDefined();
     expect(results.find((r) => r.tool_use_id === "2")).toBeDefined();
-  });
+  }, 30000);
 
   test("respects abort signal", async () => {
     const controller = new AbortController();
