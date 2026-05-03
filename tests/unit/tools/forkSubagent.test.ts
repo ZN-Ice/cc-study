@@ -5,7 +5,7 @@
  * buildWorktreeNotice, FORK_AGENT definition, isForkSubagentEnabled.
  */
 
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, afterEach } from "vitest";
 import {
   FORK_AGENT,
   buildForkedMessages,

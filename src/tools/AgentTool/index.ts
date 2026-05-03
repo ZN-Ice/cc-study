@@ -21,7 +21,6 @@ import { getAgentToolDescription } from "./prompt.js";
 import { runSubAgent } from "./orchestrator.js";
 import {
   isForkSubagentEnabled,
-  isInForkChild,
   FORK_AGENT,
   buildForkedMessages,
   buildWorktreeNotice,
@@ -33,7 +32,7 @@ import {
   hasWorktreeChanges,
 } from "../../utils/worktree.js";
 import type { AgentWorktreeInfo } from "../../utils/worktree.js";
-import type { AssistantMessage, Message } from "../../messages.js";
+import type { Message } from "../../messages.js";
 import { createAssistantMessage, createUserMessage } from "../../messages.js";
 
 /** Counter for generating unique agent IDs within a session */

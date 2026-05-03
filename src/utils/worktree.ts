@@ -15,9 +15,9 @@
  * - No stale worktree auto-cleanup
  */
 
-import { mkdir, stat, utimes } from "node:fs/promises";
+import { mkdir, utimes } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, basename } from "node:path";
+import { join } from "node:path";
 import { execFileSync, execSync } from "node:child_process";
 
 // ──────────────────────────────────────────────
@@ -297,18 +297,34 @@ export async function removeAgentWorktree(
  * exclusion, the copied file would always register as "uncommitted",
  * preventing automatic worktree cleanup.
  */
+/** Files/patterns that are setup artifacts and should be ignored by change detection. */
+const SETUP_ARTIFACTS = new Set([".claude/settings.local.json"]);
+
 export async function hasWorktreeChanges(
   worktreePath: string,
   headCommit: string,
 ): Promise<boolean> {
-  // Check for uncommitted changes, ignoring .claude/settings.local.json
-  // which is a setup artifact copied by performPostCreationSetup
+  // Check for uncommitted changes
   const { stdout: statusOutput, success: statusOk } = runGit(
-    ["status", "--porcelain", "--", ".", "!.claude/settings.local.json"],
+    ["status", "--porcelain"],
     worktreePath,
   );
   if (!statusOk) return true;
-  if (statusOutput.trim().length > 0) return true;
+
+  // Filter out setup artifacts (e.g. .claude/settings.local.json copied by
+  // performPostCreationSetup). These are not tracked by git and would always
+  // register as "uncommitted", preventing automatic worktree cleanup.
+  const meaningfulChanges = statusOutput
+    .trim()
+    .split("\n")
+    .filter((line) => {
+      if (line.length === 0) return false;
+      // status format: XY filename (2-char prefix + space + path)
+      const filePath = line.substring(3);
+      return !SETUP_ARTIFACTS.has(filePath);
+    });
+
+  if (meaningfulChanges.length > 0) return true;
 
   // Check for new commits since headCommit
   const { stdout: revListOutput, success: revListOk } = runGit(

@@ -10,7 +10,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { AssistantMessage, Message, UserMessage } from "../../messages.js";
+import type { AssistantMessage, Message } from "../../messages.js";
 import { createUserMessage } from "../../messages.js";
 import type { AgentDefinition } from "./types.js";
 

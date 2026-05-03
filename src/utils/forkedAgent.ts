@@ -21,7 +21,7 @@ import type { StreamEvent } from "../services/api.js";
 import { createAssistantMessage, createUserMessage } from "../messages.js";
 import type { ToolRegistry } from "../tools/registry.js";
 import { executeAllToolBatches } from "../tools/orchestration.js";
-import type { AgentDefinition, AgentToolResult, OnAgentProgress } from "../tools/AgentTool/types.js";
+import type { AgentDefinition, OnAgentProgress } from "../tools/AgentTool/types.js";
 import { filterToolsForAgent } from "../tools/AgentTool/orchestrator.js";
 
 // ──────────────────────────────────────────────
