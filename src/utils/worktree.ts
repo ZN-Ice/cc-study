@@ -297,8 +297,8 @@ export async function removeAgentWorktree(
  * exclusion, the copied file would always register as "uncommitted",
  * preventing automatic worktree cleanup.
  */
-/** Files/patterns that are setup artifacts and should be ignored by change detection. */
-const SETUP_ARTIFACTS = new Set([".claude/settings.local.json"]);
+/** Path prefixes for setup artifacts that should be ignored by change detection. */
+const SETUP_ARTIFACT_PREFIXES = [".claude/settings.local.json", ".claude/"];
 
 export async function hasWorktreeChanges(
   worktreePath: string,
@@ -312,8 +312,9 @@ export async function hasWorktreeChanges(
   if (!statusOk) return true;
 
   // Filter out setup artifacts (e.g. .claude/settings.local.json copied by
-  // performPostCreationSetup). These are not tracked by git and would always
-  // register as "uncommitted", preventing automatic worktree cleanup.
+  // performPostCreationSetup). Git status may report the file directly
+  // (?? .claude/settings.local.json) or the parent directory (?? .claude/),
+  // so we match on path prefixes.
   const meaningfulChanges = statusOutput
     .trim()
     .split("\n")
@@ -321,7 +322,7 @@ export async function hasWorktreeChanges(
       if (line.length === 0) return false;
       // status format: XY filename (2-char prefix + space + path)
       const filePath = line.substring(3);
-      return !SETUP_ARTIFACTS.has(filePath);
+      return !SETUP_ARTIFACT_PREFIXES.some((prefix) => filePath.startsWith(prefix));
     });
 
   if (meaningfulChanges.length > 0) return true;
