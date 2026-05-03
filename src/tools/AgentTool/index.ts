@@ -143,7 +143,10 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
       }
     }
 
-    let result: ToolResult;
+    let result: ToolResult = {
+      output: "",
+      error: true,
+    };
 
     try {
       if (isForkPath) {

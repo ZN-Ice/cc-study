@@ -18,7 +18,7 @@
 import { mkdir, stat, utimes } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, basename } from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 
 // ──────────────────────────────────────────────
 // Constants
@@ -123,10 +123,11 @@ function getDefaultBranch(cwd: string): string {
 
 /**
  * Run a git command, returning { stdout, success }.
+ * Uses execFileSync to avoid shell interpretation of special characters.
  */
 function runGit(args: string[], cwd: string): { stdout: string; success: boolean } {
   try {
-    const stdout = execSync(`git ${args.join(" ")}`, {
+    const stdout = execFileSync("git", args, {
       cwd,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
@@ -303,7 +304,7 @@ export async function hasWorktreeChanges(
   // Check for uncommitted changes, ignoring .claude/settings.local.json
   // which is a setup artifact copied by performPostCreationSetup
   const { stdout: statusOutput, success: statusOk } = runGit(
-    ["status", "--porcelain", "--", ".", "!:.claude/settings.local.json"],
+    ["status", "--porcelain", "--", ".", "!.claude/settings.local.json"],
     worktreePath,
   );
   if (!statusOk) return true;
