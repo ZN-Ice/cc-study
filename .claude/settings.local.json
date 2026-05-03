@@ -30,7 +30,19 @@
       "Bash(gh run:*)",
       "Bash(gh api:*)",
       "Bash(pnpm lint:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(grep -E \"\\\\.\\(tsx?|ts\\)$\")",
+      "Bash(git stash *)",
+      "Bash(kill %1)",
+      "Bash(pnpm vitest *)",
+      "Bash(git status *)",
+      "Bash(git config *)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 *)"
     ]
   }
 }

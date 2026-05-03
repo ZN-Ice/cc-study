@@ -8,7 +8,7 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync, existsSync, realpathSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, existsSync, realpathSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execSync } from "node:child_process";
@@ -261,6 +261,19 @@ describe("hasWorktreeChanges", () => {
   test("returns false for clean worktree", async () => {
     const created = await createAgentWorktree("clean-test");
 
+    const hasChanges = await hasWorktreeChanges(created.worktreePath, headCommit);
+    expect(hasChanges).toBe(false);
+  });
+
+  test("returns false when only .claude/settings.local.json exists (setup artifact)", async () => {
+    const created = await createAgentWorktree("settings-artifact-test");
+
+    // Simulate performPostCreationSetup copying settings.local.json
+    const settingsDir = join(created.worktreePath, ".claude");
+    mkdirSync(settingsDir, { recursive: true });
+    writeFileSync(join(settingsDir, "settings.local.json"), '{"permissions":{}}');
+
+    // Should NOT detect this as a change — it's a setup artifact
     const hasChanges = await hasWorktreeChanges(created.worktreePath, headCommit);
     expect(hasChanges).toBe(false);
   });

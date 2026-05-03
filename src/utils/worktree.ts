@@ -290,14 +290,20 @@ export async function removeAgentWorktree(
  * - Working directory has uncommitted changes (dirty)
  * - Commits were made since `headCommit`
  * - Git commands fail (fail-closed)
+ *
+ * Ignores .claude/settings.local.json — this file is copied by
+ * performPostCreationSetup and is not tracked by git. Without this
+ * exclusion, the copied file would always register as "uncommitted",
+ * preventing automatic worktree cleanup.
  */
 export async function hasWorktreeChanges(
   worktreePath: string,
   headCommit: string,
 ): Promise<boolean> {
-  // Check for uncommitted changes
+  // Check for uncommitted changes, ignoring .claude/settings.local.json
+  // which is a setup artifact copied by performPostCreationSetup
   const { stdout: statusOutput, success: statusOk } = runGit(
-    ["status", "--porcelain"],
+    ["status", "--porcelain", "--", ".", "!:.claude/settings.local.json"],
     worktreePath,
   );
   if (!statusOk) return true;
