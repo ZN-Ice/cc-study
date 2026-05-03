@@ -6,6 +6,8 @@
  * Supports two paths:
  * 1. Normal path: explicit `subagent_type` → run inline agent via runSubAgent
  * 2. Fork path: `subagent_type` omitted + gate enabled → run forked agent via runForkedAgent
+ *
+ * Both paths support optional worktree isolation via the `isolation` parameter.
  */
 
 import type { Tool, ToolResult, ToolContext, ValidationResult } from "../types.js";
@@ -25,6 +27,12 @@ import {
   buildWorktreeNotice,
 } from "./forkSubagent.js";
 import { runForkedAgent } from "../../utils/forkedAgent.js";
+import {
+  createAgentWorktree,
+  removeAgentWorktree,
+  hasWorktreeChanges,
+} from "../../utils/worktree.js";
+import type { AgentWorktreeInfo } from "../../utils/worktree.js";
 import type { AssistantMessage, Message } from "../../messages.js";
 import { createAssistantMessage, createUserMessage } from "../../messages.js";
 
@@ -115,14 +123,68 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
     // - subagent_type omitted, gate off → default general-purpose
     const effectiveType = input.subagent_type ?? (isForkSubagentEnabled() ? undefined : "general-purpose");
     const isForkPath = effectiveType === undefined;
+    const agentSeq = ++agentIdCounter;
 
-    if (isForkPath) {
-      // Fork path
-      return executeForkPath(input, apiConfig, parentRegistry, context);
+    // Resolve effective isolation: input param overrides agent definition
+    const selectedAgent = isForkPath ? FORK_AGENT : agentDefinitions.get(effectiveType);
+    const effectiveIsolation = input.isolation ?? selectedAgent?.isolation;
+
+    // Create worktree if isolation requested
+    let worktreeInfo: AgentWorktreeInfo | undefined;
+    if (effectiveIsolation === "worktree") {
+      try {
+        const slug = `agent-${agentSeq.toString(16).padStart(4, "0")}`;
+        worktreeInfo = await createAgentWorktree(slug);
+      } catch (err) {
+        return {
+          output: `Failed to create agent worktree: ${err instanceof Error ? err.message : String(err)}`,
+          error: true,
+        };
+      }
     }
 
-    // Normal path — existing logic
-    return executeNormalPath(input, effectiveType, apiConfig, parentRegistry, context);
+    let result: ToolResult;
+
+    try {
+      if (isForkPath) {
+        result = await executeForkPath(
+          input, apiConfig, parentRegistry, context, worktreeInfo,
+        );
+      } else {
+        result = await executeNormalPath(
+          input, effectiveType!, apiConfig, parentRegistry, context, worktreeInfo,
+        );
+      }
+    } finally {
+      // Cleanup worktree: remove if no changes, keep if dirty
+      if (worktreeInfo?.headCommit && worktreeInfo?.gitRoot) {
+        try {
+          const hasChanged = await hasWorktreeChanges(
+            worktreeInfo.worktreePath,
+            worktreeInfo.headCommit,
+          );
+          if (!hasChanged) {
+            await removeAgentWorktree(
+              worktreeInfo.worktreePath,
+              worktreeInfo.worktreeBranch,
+              worktreeInfo.gitRoot,
+            );
+          }
+          // If has changes, worktree is preserved — report path in metadata
+          if (hasChanged && !result.error) {
+            result.metadata = {
+              ...result.metadata,
+              worktreePath: worktreeInfo.worktreePath,
+              worktreeBranch: worktreeInfo.worktreeBranch,
+            };
+          }
+        } catch {
+          // fail-closed: keep worktree if cleanup fails
+        }
+      }
+    }
+
+    return result;
   },
 };
 
@@ -135,6 +197,7 @@ async function executeNormalPath(
   apiConfig: import("../../services/api.js").APIConfig,
   parentRegistry: import("../registry.js").ToolRegistry,
   context: ToolContext,
+  worktreeInfo?: AgentWorktreeInfo,
 ): Promise<ToolResult> {
   const agentDef = agentDefinitions.get(agentType) as AgentDefinition;
 
@@ -151,6 +214,7 @@ async function executeNormalPath(
       agentId,
       description: input.description,
       onProgress: context.onAgentProgress,
+      worktreePath: worktreeInfo?.worktreePath,
     });
 
     return {
@@ -159,6 +223,7 @@ async function executeNormalPath(
         agentType: result.agentType,
         toolUseCount: result.totalToolUseCount,
         durationMs: result.totalDurationMs,
+        ...(worktreeInfo ? { worktreePath: worktreeInfo.worktreePath } : {}),
       },
     };
   } catch (err) {
@@ -180,12 +245,14 @@ async function executeNormalPath(
  *
  * The fork child inherits the parent's conversation context and system prompt
  * for prompt cache sharing. It receives only a directive for its specific task.
+ * When running in a worktree, a path-translation notice is injected.
  */
 async function executeForkPath(
   input: AgentToolInput,
   apiConfig: import("../../services/api.js").APIConfig,
   parentRegistry: import("../registry.js").ToolRegistry,
   context: ToolContext,
+  worktreeInfo?: AgentWorktreeInfo,
 ): Promise<ToolResult> {
   const agentId = `agent-fork-${++agentIdCounter}`;
 
@@ -211,6 +278,17 @@ async function executeForkPath(
     // Build fork messages
     const promptMessages = buildForkedMessages(input.prompt, placeholderAssistant);
 
+    // Inject worktree notice if running in an isolated worktree
+    if (worktreeInfo) {
+      const notice = buildWorktreeNotice(
+        context.workingDirectory,
+        worktreeInfo.worktreePath,
+      );
+      promptMessages.push(createUserMessage([
+        { type: "text" as const, text: notice },
+      ]));
+    }
+
     // Build cache-safe params with parent's system prompt
     const cacheSafeParams = {
       systemPrompt: apiConfig.systemPrompt,
@@ -229,6 +307,7 @@ async function executeForkPath(
       agentId,
       description: input.description,
       onProgress: context.onAgentProgress,
+      worktreePath: worktreeInfo?.worktreePath,
     });
 
     return {
@@ -236,6 +315,7 @@ async function executeForkPath(
       metadata: {
         agentType: FORK_AGENT.agentType,
         durationMs: result.totalDurationMs,
+        ...(worktreeInfo ? { worktreePath: worktreeInfo.worktreePath } : {}),
       },
     };
   } catch (err) {
