@@ -117,4 +117,25 @@ describe("agentToolInputSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  test("accepts isolation field", () => {
+    const result = agentToolInputSchema.safeParse({
+      description: "refactor",
+      prompt: "Refactor module X",
+      isolation: "worktree",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.isolation).toBe("worktree");
+    }
+  });
+
+  test("rejects invalid isolation value", () => {
+    const result = agentToolInputSchema.safeParse({
+      description: "task",
+      prompt: "Do something",
+      isolation: "remote",
+    });
+    expect(result.success).toBe(false);
+  });
 });

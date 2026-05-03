@@ -210,6 +210,12 @@ export interface RunSubAgentParams {
   readonly description?: string;
   /** Callback for progress updates during agent execution */
   readonly onProgress?: OnAgentProgress;
+  /**
+   * Optional worktree path — overrides the agent's working directory.
+   * When set, all tool executions within this agent use the worktree
+   * directory instead of the parent's working directory.
+   */
+  readonly worktreePath?: string;
 }
 
 /**
@@ -231,6 +237,7 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
     agentId,
     description,
     onProgress,
+    worktreePath,
   } = params;
 
   const startTime = Date.now();
@@ -252,6 +259,9 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
   let totalToolUseCount = 0;
   /** Last N tool executions for UI display */
   const recentTools: string[] = [];
+
+  // Override working directory if worktree is set
+  const effectiveCwd = worktreePath ?? context.workingDirectory;
 
   // 4. Streaming loop
   for (let turn = 0; turn < effectiveMaxTurns; turn++) {
@@ -325,8 +335,13 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
 
     if (context.abortSignal.aborted) break;
 
+    const toolExecContext = {
+      ...context,
+      workingDirectory: effectiveCwd,
+    };
+
     const results = await executeAllToolBatches(
-      toolUseBlocks, filteredRegistry, context,
+      toolUseBlocks, filteredRegistry, toolExecContext,
     );
 
     const toolResultBlocks: ContentBlock[] = results.map((r) => ({

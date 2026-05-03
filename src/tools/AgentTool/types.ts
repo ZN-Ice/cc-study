@@ -55,6 +55,15 @@ export interface AgentDefinition {
 
   /** Maximum number of agentic turns before stopping (default: 20) */
   readonly maxTurns?: number;
+
+  /**
+   * Isolation mode for this agent.
+   * 'worktree' — runs in an isolated git worktree for filesystem isolation.
+   * undefined (default) — shares the parent's working directory.
+   *
+   * The model can override this per-invocation via the `isolation` parameter.
+   */
+  readonly isolation?: "worktree";
 }
 
 // ──────────────────────────────────────────────
@@ -74,6 +83,11 @@ export const agentToolInputSchema = z.strictObject({
   ),
   model: z.string().optional().describe(
     "Optional model override (currently unused, inherits parent model)"
+  ),
+  isolation: z.enum(["worktree"]).optional().describe(
+    "Request an isolated git worktree for this agent. " +
+    "Use when the agent may modify files and you want to prevent " +
+    "conflicts with other concurrent agents."
   ),
 });
 

@@ -3,9 +3,11 @@
  *
  * References: free-code/src/tools/AgentTool/AgentTool.tsx
  *
- * The AgentTool is just another Tool. When the LLM calls it, its execute()
- * method runs a nested streaming + tool-use loop via the orchestrator and
- * returns the final text result as a ToolResult.
+ * Supports two paths:
+ * 1. Normal path: explicit `subagent_type` → run inline agent via runSubAgent
+ * 2. Fork path: `subagent_type` omitted + gate enabled → run forked agent via runForkedAgent
+ *
+ * Both paths support optional worktree isolation via the `isolation` parameter.
  */
 
 import type { Tool, ToolResult, ToolContext, ValidationResult } from "../types.js";
@@ -17,6 +19,21 @@ import {
 import { createDefaultAgentDefinitions } from "./agentDefs.js";
 import { getAgentToolDescription } from "./prompt.js";
 import { runSubAgent } from "./orchestrator.js";
+import {
+  isForkSubagentEnabled,
+  FORK_AGENT,
+  buildForkedMessages,
+  buildWorktreeNotice,
+} from "./forkSubagent.js";
+import { runForkedAgent } from "../../utils/forkedAgent.js";
+import {
+  createAgentWorktree,
+  removeAgentWorktree,
+  hasWorktreeChanges,
+} from "../../utils/worktree.js";
+import type { AgentWorktreeInfo } from "../../utils/worktree.js";
+import type { Message } from "../../messages.js";
+import { createAssistantMessage, createUserMessage } from "../../messages.js";
 
 /** Counter for generating unique agent IDs within a session */
 let agentIdCounter = 0;
@@ -40,8 +57,14 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
       return { ok: false, error: "Error: prompt is required" };
     }
 
-    const agentType = input.subagent_type ?? "general-purpose";
-    const agentDef = agentDefinitions.get(agentType);
+    // In fork mode, subagent_type is optional (defaults to fork)
+    const effectiveType = input.subagent_type ?? (isForkSubagentEnabled() ? undefined : "general-purpose");
+    if (effectiveType === undefined) {
+      // Fork path — no agent type validation needed
+      return { ok: true };
+    }
+
+    const agentDef = agentDefinitions.get(effectiveType);
     if (!agentDef) {
       const available = agentDefinitions
         .getAll()
@@ -49,7 +72,7 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
         .join(", ");
       return {
         ok: false,
-        error: `Error: Unknown agent type "${agentType}". Available: ${available}`,
+        error: `Error: Unknown agent type "${effectiveType}". Available: ${available}`,
       };
     }
 
@@ -75,9 +98,6 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
     input: AgentToolInput,
     context: ToolContext,
   ): Promise<ToolResult> {
-    const agentType = input.subagent_type ?? "general-purpose";
-    const agentDef = agentDefinitions.get(agentType) as AgentDefinition;
-
     // Resolve API config from context
     const apiConfig = context.apiConfig;
     if (!apiConfig) {
@@ -96,43 +116,223 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
       };
     }
 
-    try {
-      const agentId = `agent-${agentType}-${++agentIdCounter}`;
+    // Fork subagent routing:
+    // - subagent_type set → use it (explicit wins)
+    // - subagent_type omitted, gate on → fork path (undefined)
+    // - subagent_type omitted, gate off → default general-purpose
+    const effectiveType = input.subagent_type ?? (isForkSubagentEnabled() ? undefined : "general-purpose");
+    const isForkPath = effectiveType === undefined;
+    const agentSeq = ++agentIdCounter;
 
-      const result = await runSubAgent({
-        agentDefinition: agentDef,
-        prompt: input.prompt,
-        apiConfig,
-        parentRegistry,
-        context,
-        maxTurns: agentDef.maxTurns,
-        agentId,
-        description: input.description,
-        onProgress: context.onAgentProgress,
-      });
+    // Resolve effective isolation: input param overrides agent definition
+    const selectedAgent = isForkPath ? FORK_AGENT : agentDefinitions.get(effectiveType);
+    const effectiveIsolation = input.isolation ?? selectedAgent?.isolation;
 
-      return {
-        output: result.content,
-        metadata: {
-          agentType: result.agentType,
-          toolUseCount: result.totalToolUseCount,
-          durationMs: result.totalDurationMs,
-        },
-      };
-    } catch (err) {
-      if (context.abortSignal.aborted) {
+    // Create worktree if isolation requested
+    let worktreeInfo: AgentWorktreeInfo | undefined;
+    if (effectiveIsolation === "worktree") {
+      try {
+        const slug = `agent-${agentSeq.toString(16).padStart(4, "0")}`;
+        worktreeInfo = await createAgentWorktree(slug);
+      } catch (err) {
         return {
-          output: "Agent execution was cancelled",
+          output: `Failed to create agent worktree: ${err instanceof Error ? err.message : String(err)}`,
           error: true,
         };
       }
+    }
+
+    let result: ToolResult = {
+      output: "",
+      error: true,
+    };
+
+    try {
+      if (isForkPath) {
+        result = await executeForkPath(
+          input, apiConfig, parentRegistry, context, worktreeInfo,
+        );
+      } else {
+        result = await executeNormalPath(
+          input, effectiveType!, apiConfig, parentRegistry, context, worktreeInfo,
+        );
+      }
+    } finally {
+      // Cleanup worktree: remove if no changes, keep if dirty
+      if (worktreeInfo?.headCommit && worktreeInfo?.gitRoot) {
+        try {
+          const hasChanged = await hasWorktreeChanges(
+            worktreeInfo.worktreePath,
+            worktreeInfo.headCommit,
+          );
+          if (!hasChanged) {
+            await removeAgentWorktree(
+              worktreeInfo.worktreePath,
+              worktreeInfo.worktreeBranch,
+              worktreeInfo.gitRoot,
+            );
+          }
+          // If has changes, worktree is preserved — report path in metadata
+          if (hasChanged && !result.error) {
+            result.metadata = {
+              ...result.metadata,
+              worktreePath: worktreeInfo.worktreePath,
+              worktreeBranch: worktreeInfo.worktreeBranch,
+            };
+          }
+        } catch {
+          // fail-closed: keep worktree if cleanup fails
+        }
+      }
+    }
+
+    return result;
+  },
+};
+
+/**
+ * Execute the normal (non-fork) agent path.
+ */
+async function executeNormalPath(
+  input: AgentToolInput,
+  agentType: string,
+  apiConfig: import("../../services/api.js").APIConfig,
+  parentRegistry: import("../registry.js").ToolRegistry,
+  context: ToolContext,
+  worktreeInfo?: AgentWorktreeInfo,
+): Promise<ToolResult> {
+  const agentDef = agentDefinitions.get(agentType) as AgentDefinition;
+
+  try {
+    const agentId = `agent-${agentType}-${++agentIdCounter}`;
+
+    const result = await runSubAgent({
+      agentDefinition: agentDef,
+      prompt: input.prompt,
+      apiConfig,
+      parentRegistry,
+      context,
+      maxTurns: agentDef.maxTurns,
+      agentId,
+      description: input.description,
+      onProgress: context.onAgentProgress,
+      worktreePath: worktreeInfo?.worktreePath,
+    });
+
+    return {
+      output: result.content,
+      metadata: {
+        agentType: result.agentType,
+        toolUseCount: result.totalToolUseCount,
+        durationMs: result.totalDurationMs,
+        ...(worktreeInfo ? { worktreePath: worktreeInfo.worktreePath } : {}),
+      },
+    };
+  } catch (err) {
+    if (context.abortSignal.aborted) {
       return {
-        output: `Agent execution error: ${err instanceof Error ? err.message : String(err)}`,
+        output: "Agent execution was cancelled",
         error: true,
       };
     }
-  },
-};
+    return {
+      output: `Agent execution error: ${err instanceof Error ? err.message : String(err)}`,
+      error: true,
+    };
+  }
+}
+
+/**
+ * Execute the fork agent path.
+ *
+ * The fork child inherits the parent's conversation context and system prompt
+ * for prompt cache sharing. It receives only a directive for its specific task.
+ * When running in a worktree, a path-translation notice is injected.
+ */
+async function executeForkPath(
+  input: AgentToolInput,
+  apiConfig: import("../../services/api.js").APIConfig,
+  parentRegistry: import("../registry.js").ToolRegistry,
+  context: ToolContext,
+  worktreeInfo?: AgentWorktreeInfo,
+): Promise<ToolResult> {
+  const agentId = `agent-fork-${++agentIdCounter}`;
+
+  try {
+    // Recursive fork guard: check if we're already in a fork child
+    // Note: we'd need access to parent messages for this check.
+    // For now, the context doesn't carry the full message history,
+    // so we rely on the isInForkChild check when messages are available.
+    // This is a simplified version — full implementation would check
+    // toolUseContext.messages or querySource.
+
+    // Build a synthetic assistant message from the current context.
+    // In the full implementation, this comes from the parent's current
+    // assistant message that triggered this tool call.
+    // For our simplified version, we create a minimal placeholder.
+    const placeholderAssistant = createAssistantMessage({
+      content: [
+        { type: "text", text: `Starting fork agent for: ${input.description || input.prompt.slice(0, 50)}` },
+      ],
+      model: apiConfig.model,
+    });
+
+    // Build fork messages
+    const promptMessages = buildForkedMessages(input.prompt, placeholderAssistant);
+
+    // Inject worktree notice if running in an isolated worktree
+    if (worktreeInfo) {
+      const notice = buildWorktreeNotice(
+        context.workingDirectory,
+        worktreeInfo.worktreePath,
+      );
+      promptMessages.push(createUserMessage([
+        { type: "text" as const, text: notice },
+      ]));
+    }
+
+    // Build cache-safe params with parent's system prompt
+    const cacheSafeParams = {
+      systemPrompt: apiConfig.systemPrompt,
+      parentMessages: [] as Message[], // Parent messages would be threaded from context
+    };
+
+    const result = await runForkedAgent({
+      agentDefinition: FORK_AGENT,
+      promptMessages,
+      cacheSafeParams,
+      apiConfig,
+      parentRegistry,
+      context,
+      useExactTools: true, // Use exact parent tools for cache
+      maxTurns: FORK_AGENT.maxTurns,
+      agentId,
+      description: input.description,
+      onProgress: context.onAgentProgress,
+      worktreePath: worktreeInfo?.worktreePath,
+    });
+
+    return {
+      output: result.content,
+      metadata: {
+        agentType: FORK_AGENT.agentType,
+        durationMs: result.totalDurationMs,
+        ...(worktreeInfo ? { worktreePath: worktreeInfo.worktreePath } : {}),
+      },
+    };
+  } catch (err) {
+    if (context.abortSignal.aborted) {
+      return {
+        output: "Fork agent execution was cancelled",
+        error: true,
+      };
+    }
+    return {
+      output: `Fork agent error: ${err instanceof Error ? err.message : String(err)}`,
+      error: true,
+    };
+  }
+}
 
 /** Re-export agent definitions registry for testing */
 export { agentDefinitions };
