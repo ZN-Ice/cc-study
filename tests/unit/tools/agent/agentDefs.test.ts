@@ -9,12 +9,13 @@ import {
 } from "../../../../src/tools/AgentTool/agentDefs.js";
 
 describe("createDefaultAgentDefinitions", () => {
-  test("returns registry with 3 built-in agents", () => {
+  test("returns registry with 4 built-in agents", () => {
     const registry = createDefaultAgentDefinitions();
-    expect(registry.size).toBe(3);
+    expect(registry.size).toBe(4);
     expect(registry.get("general-purpose")).toBeDefined();
     expect(registry.get("Explore")).toBeDefined();
     expect(registry.get("Plan")).toBeDefined();
+    expect(registry.get("teammate")).toBeDefined();
   });
 
   test("general-purpose has correct properties", () => {
@@ -71,12 +72,13 @@ describe("createDefaultAgentDefinitions", () => {
 });
 
 describe("builtInAgentDefinitions", () => {
-  test("is an array of 3 definitions", () => {
-    expect(builtInAgentDefinitions).toHaveLength(3);
+  test("is an array of 4 definitions", () => {
+    expect(builtInAgentDefinitions).toHaveLength(4);
     expect(builtInAgentDefinitions.map((d) => d.agentType)).toEqual([
       "general-purpose",
       "Explore",
       "Plan",
+      "teammate",
     ]);
   });
 });

@@ -77,6 +77,20 @@ const planAgent: AgentDefinition = {
 // Registry Factory
 // ──────────────────────────────────────────────
 
+const teammateAgent: AgentDefinition = {
+  agentType: "teammate",
+  whenToUse:
+    "Teammate agent for collaborative multi-agent work within a team. " +
+    "Use when you need to coordinate with other agents via messaging.",
+  disallowedTools: ["Agent", "team_create"],
+  maxTurns: 30,
+  getSystemPrompt: () =>
+    "You are a collaborative teammate in a multi-agent team. " +
+    "Work on your assigned task independently but coordinate with other " +
+    "team members via the send_message tool when needed. " +
+    "Report your results clearly and concisely when done.",
+};
+
 /**
  * Create an AgentDefinitionRegistry populated with all built-in agents.
  */
@@ -85,6 +99,7 @@ export function createDefaultAgentDefinitions(): AgentDefinitionRegistry {
   registry.register(generalPurposeAgent);
   registry.register(exploreAgent);
   registry.register(planAgent);
+  registry.register(teammateAgent);
   return registry;
 }
 
@@ -95,4 +110,5 @@ export const builtInAgentDefinitions: AgentDefinition[] = [
   generalPurposeAgent,
   exploreAgent,
   planAgent,
+  teammateAgent,
 ];
