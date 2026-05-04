@@ -1,0 +1,9 @@
+export const TEAM_LEAD_NAME = "team-lead";
+
+export const TEAMMATE_MESSAGE_TAG = "teammate-message";
+
+export const TEAMMATE_COMMAND_ENV_VAR = "CLAUDE_CODE_TEAMMATE_COMMAND";
+
+export const TEAMMATE_COLOR_ENV_VAR = "CLAUDE_CODE_AGENT_COLOR";
+
+export const PLAN_MODE_REQUIRED_ENV_VAR = "CLAUDE_CODE_PLAN_MODE_REQUIRED";
