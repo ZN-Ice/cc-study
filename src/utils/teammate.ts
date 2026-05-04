@@ -15,7 +15,6 @@
 import {
   getTeammateContext,
   isInProcessTeammate,
-  type TeammateContext,
 } from "./teammateContext.js";
 
 // ──────────────────────────────────────────────

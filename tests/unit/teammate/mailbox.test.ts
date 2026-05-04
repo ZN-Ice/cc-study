@@ -176,7 +176,7 @@ describe("Mailbox — clear", () => {
 
   test("clear removes waiters", async () => {
     const mailbox = new Mailbox();
-    const receivePromise = mailbox.receive();
+    mailbox.receive();  // create a waiter that will never resolve
     mailbox.clear();
 
     // After clear, sending should not resolve the old promise

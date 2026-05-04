@@ -17,7 +17,6 @@
 
 let AsyncLocalStorage: typeof import("async_hooks").AsyncLocalStorage | undefined;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const asyncHooks = await import("node:async_hooks");
   AsyncLocalStorage = asyncHooks.AsyncLocalStorage;
 } catch {
@@ -58,7 +57,6 @@ export interface TeammateContext {
 // Module-level fallback for environments without async_hooks
 let fallbackContext: TeammateContext | undefined;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const storage = AsyncLocalStorage ? new AsyncLocalStorage<TeammateContext>() : null;
 
 // ──────────────────────────────────────────────
