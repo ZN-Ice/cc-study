@@ -337,7 +337,7 @@ describe("AgentTool", () => {
       );
     });
 
-    test("execute: spawn output defaults agent_type to general-purpose when omitted", async () => {
+    test("execute: spawn output defaults agent_type to teammate when omitted", async () => {
       mockedSpawnTeammate.mockReturnValue({
         success: true,
         agentId: "helper@research-team",
@@ -365,7 +365,12 @@ describe("AgentTool", () => {
       );
 
       const parsed = JSON.parse(result.output);
-      expect(parsed.agent_type).toBe("general-purpose");
+      expect(parsed.agent_type).toBe("teammate");
+      expect(mockedSpawnTeammate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentDefinition: expect.objectContaining({ agentType: "teammate" }),
+        }),
+      );
     });
   });
 });

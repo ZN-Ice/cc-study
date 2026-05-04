@@ -367,7 +367,7 @@ async function executeSpawnPath(
 ): Promise<ToolResult> {
   const teamName = input.team_name!;
   const name = input.name ?? "teammate";
-  const agentType = input.subagent_type ?? "general-purpose";
+  const agentType = input.subagent_type ?? "teammate";
   const agentDef = agentDefinitions.get(agentType);
 
   const spawnResult = spawnInProcessTeammate({

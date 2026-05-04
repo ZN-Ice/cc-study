@@ -41,7 +41,8 @@ function extractToolPermissionDetails(
 ): { subtitle?: string; content?: string } {
   switch (toolName) {
     case "Agent": {
-      const subagentType = (rawInput.subagent_type as string) ?? "general-purpose";
+      const hasTeamName = rawInput.team_name !== undefined;
+      const subagentType = (rawInput.subagent_type as string) ?? (hasTeamName ? "teammate" : "general-purpose");
       const description = (rawInput.description as string) ?? "";
       return {
         subtitle: `Type: ${subagentType}${description ? ` — ${description}` : ""}`,
