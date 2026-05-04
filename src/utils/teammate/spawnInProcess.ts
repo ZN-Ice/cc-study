@@ -23,7 +23,7 @@ export interface InProcessSpawnOutput {
 export function spawnInProcessTeammate(
   config: InProcessSpawnConfig,
 ): InProcessSpawnOutput {
-  const { name, teamName, prompt, color, planModeRequired = false } = config;
+  const { name, teamName, color, planModeRequired = false } = config;
 
   const agentId = generateAgentId(name, teamName);
   const taskId = randomUUID().slice(0, 8);
