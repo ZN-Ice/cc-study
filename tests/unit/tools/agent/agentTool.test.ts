@@ -299,5 +299,73 @@ describe("AgentTool", () => {
       expect(mockedSpawnTeammate).not.toHaveBeenCalled();
       expect(result.output).toBe("Sync result");
     });
+
+    test("execute: spawn output includes agent_type from subagent_type", async () => {
+      mockedSpawnTeammate.mockReturnValue({
+        success: true,
+        agentId: "explorer@research-team",
+        taskId: "abc12345",
+        abortController: new AbortController(),
+        teammateContext: {
+          agentId: "explorer@research-team",
+          agentName: "explorer",
+          teamName: "research-team",
+          planModeRequired: false,
+          parentSessionId: "abc12345",
+          abortController: new AbortController(),
+          isInProcess: true,
+        },
+      });
+
+      const result = await AgentTool.execute(
+        {
+          description: "explore",
+          prompt: "Search codebase",
+          team_name: "research-team",
+          name: "explorer",
+          subagent_type: "Explore",
+        },
+        createTestContext(),
+      );
+
+      const parsed = JSON.parse(result.output);
+      expect(parsed.agent_type).toBe("Explore");
+      expect(mockedSpawnTeammate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentDefinition: expect.objectContaining({ agentType: "Explore" }),
+        }),
+      );
+    });
+
+    test("execute: spawn output defaults agent_type to general-purpose when omitted", async () => {
+      mockedSpawnTeammate.mockReturnValue({
+        success: true,
+        agentId: "helper@research-team",
+        taskId: "abc12346",
+        abortController: new AbortController(),
+        teammateContext: {
+          agentId: "helper@research-team",
+          agentName: "helper",
+          teamName: "research-team",
+          planModeRequired: false,
+          parentSessionId: "abc12346",
+          abortController: new AbortController(),
+          isInProcess: true,
+        },
+      });
+
+      const result = await AgentTool.execute(
+        {
+          description: "help",
+          prompt: "Do general work",
+          team_name: "research-team",
+          name: "helper",
+        },
+        createTestContext(),
+      );
+
+      const parsed = JSON.parse(result.output);
+      expect(parsed.agent_type).toBe("general-purpose");
+    });
   });
 });

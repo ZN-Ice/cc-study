@@ -36,6 +36,7 @@ export function getAgentToolDescription(definitions: AgentDefinition[]): string 
     "- If unsure which agent type to use, omit subagent_type (defaults to general-purpose)\n" +
     "- Do NOT use the agent tool for simple lookups that you can do yourself\n" +
     "- To spawn an async teammate within a team, set team_name and name — " +
-    "the teammate runs asynchronously and reports results to the team lead's mailbox"
+    "the teammate runs asynchronously and reports results to the team lead's mailbox. " +
+    "Always specify subagent_type to match the teammate's role (e.g. Explore for searching, Plan for designing, general-purpose for mixed tasks)"
   );
 }

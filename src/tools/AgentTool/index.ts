@@ -395,11 +395,13 @@ async function executeSpawnPath(
       agent_id: spawnResult.agentId,
       teammate_name: name,
       team_name: teamName,
-      message: `Teammate "${name}" (${spawnResult.agentId}) spawned in team "${teamName}". It will report results to ${TEAM_LEAD_NAME}'s mailbox.`,
+      agent_type: agentType,
+      message: `Teammate "${name}" (${spawnResult.agentId}) spawned in team "${teamName}" as "${agentType}". It will report results to ${TEAM_LEAD_NAME}'s mailbox.`,
     }, null, 2),
     metadata: {
       agentId: spawnResult.agentId,
       teamName,
+      agentType,
       spawned: true,
     },
   };
