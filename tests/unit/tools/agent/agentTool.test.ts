@@ -13,9 +13,16 @@ vi.mock("../../../../src/tools/AgentTool/orchestrator.js", () => ({
   filterToolsForAgent: vi.fn(),
 }));
 
+// Mock the spawn module
+vi.mock("../../../../src/utils/teammate/spawnInProcess.js", () => ({
+  spawnInProcessTeammate: vi.fn(),
+}));
+
 import { runSubAgent } from "../../../../src/tools/AgentTool/orchestrator.js";
+import { spawnInProcessTeammate } from "../../../../src/utils/teammate/spawnInProcess.js";
 
 const mockedRunSubAgent = vi.mocked(runSubAgent);
+const mockedSpawnTeammate = vi.mocked(spawnInProcessTeammate);
 
 function createTestContext(overrides?: Partial<ToolContext>): ToolContext {
   return {
@@ -182,6 +189,115 @@ describe("AgentTool", () => {
   describe("isReadOnly", () => {
     test("returns false", () => {
       expect(AgentTool.isReadOnly!({ description: "task", prompt: "Do it" })).toBe(false);
+    });
+  });
+
+  describe("teammate spawn path", () => {
+    test("validateInput: accepts team_name with name", async () => {
+      const result = await AgentTool.validateInput(
+        {
+          description: "research",
+          prompt: "Analyze the project structure",
+          team_name: "research-team",
+          name: "explorer",
+        },
+        createTestContext(),
+      );
+      expect(result.ok).toBe(true);
+    });
+
+    test("validateInput: rejects team_name without name", async () => {
+      const result = await AgentTool.validateInput(
+        {
+          description: "research",
+          prompt: "Analyze the project structure",
+          team_name: "research-team",
+        },
+        createTestContext(),
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain("name is required");
+      }
+    });
+
+    test("execute: spawn returns immediately with agent_id", async () => {
+      mockedSpawnTeammate.mockReturnValue({
+        success: true,
+        agentId: "explorer@research-team",
+        taskId: "abc12345",
+        abortController: new AbortController(),
+        teammateContext: {
+          agentId: "explorer@research-team",
+          agentName: "explorer",
+          teamName: "research-team",
+          planModeRequired: false,
+          parentSessionId: "abc12345",
+          abortController: new AbortController(),
+          isInProcess: true,
+        },
+      });
+
+      const result = await AgentTool.execute(
+        {
+          description: "research",
+          prompt: "Analyze the project",
+          team_name: "research-team",
+          name: "explorer",
+        },
+        createTestContext(),
+      );
+
+      expect(result.error).toBeUndefined();
+      const parsed = JSON.parse(result.output);
+      expect(parsed.status).toBe("teammate_spawned");
+      expect(parsed.agent_id).toBe("explorer@research-team");
+      expect(parsed.teammate_name).toBe("explorer");
+      expect(parsed.team_name).toBe("research-team");
+      expect(result.metadata?.spawned).toBe(true);
+
+      // Should NOT have called the synchronous runSubAgent
+      expect(mockedRunSubAgent).not.toHaveBeenCalled();
+    });
+
+    test("execute: spawn failure returns error", async () => {
+      mockedSpawnTeammate.mockReturnValue({
+        success: false,
+        agentId: "explorer@research-team",
+        error: "Context initialization failed",
+      });
+
+      const result = await AgentTool.execute(
+        {
+          description: "research",
+          prompt: "Analyze the project",
+          team_name: "research-team",
+          name: "explorer",
+        },
+        createTestContext(),
+      );
+
+      expect(result.error).toBe(true);
+      expect(result.output).toContain("Failed to spawn teammate");
+      expect(result.output).toContain("Context initialization failed");
+    });
+
+    test("execute: without team_name still uses synchronous path", async () => {
+      mockedRunSubAgent.mockResolvedValueOnce({
+        agentType: "general-purpose",
+        content: "Sync result",
+        totalToolUseCount: 1,
+        totalDurationMs: 100,
+      });
+
+      const result = await AgentTool.execute(
+        { description: "task", prompt: "Do something" },
+        createTestContext(),
+      );
+
+      expect(mockedRunSubAgent).toHaveBeenCalled();
+      expect(mockedSpawnTeammate).not.toHaveBeenCalled();
+      expect(result.output).toBe("Sync result");
     });
   });
 });
