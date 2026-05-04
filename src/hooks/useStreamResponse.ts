@@ -35,14 +35,17 @@ interface PendingPermissionEntry {
  * Extract tool-specific details from a tool's input for permission display.
  * Returns subtitle (one-line summary) and content (detail text).
  */
-function extractToolPermissionDetails(
+export function extractToolPermissionDetails(
   toolName: string,
   rawInput: Record<string, unknown>,
 ): { subtitle?: string; content?: string } {
   switch (toolName) {
     case "Agent": {
       const hasTeamName = rawInput.team_name !== undefined;
-      const subagentType = (rawInput.subagent_type as string) ?? (hasTeamName ? "teammate" : "general-purpose");
+      // Teammates always display as "teammate" regardless of subagent_type
+      const subagentType = hasTeamName
+        ? "teammate"
+        : ((rawInput.subagent_type as string) ?? "general-purpose");
       const description = (rawInput.description as string) ?? "";
       return {
         subtitle: `Type: ${subagentType}${description ? ` — ${description}` : ""}`,

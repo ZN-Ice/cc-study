@@ -367,7 +367,10 @@ async function executeSpawnPath(
 ): Promise<ToolResult> {
   const teamName = input.team_name!;
   const name = input.name ?? "teammate";
-  const agentType = input.subagent_type ?? "teammate";
+  // Teammates always use the 'teammate' agent definition.
+  // subagent_type is ignored here — the prompt no longer invites the LLM
+  // to override it, and we enforce it defensively.
+  const agentType = "teammate";
   const agentDef = agentDefinitions.get(agentType);
 
   const spawnResult = spawnInProcessTeammate({

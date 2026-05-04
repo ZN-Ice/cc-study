@@ -300,7 +300,7 @@ describe("AgentTool", () => {
       expect(result.output).toBe("Sync result");
     });
 
-    test("execute: spawn output includes agent_type from subagent_type", async () => {
+    test("execute: spawn always uses teammate agent type regardless of subagent_type", async () => {
       mockedSpawnTeammate.mockReturnValue({
         success: true,
         agentId: "explorer@research-team",
@@ -329,10 +329,11 @@ describe("AgentTool", () => {
       );
 
       const parsed = JSON.parse(result.output);
-      expect(parsed.agent_type).toBe("Explore");
+      // subagent_type is ignored — spawn always uses 'teammate'
+      expect(parsed.agent_type).toBe("teammate");
       expect(mockedSpawnTeammate).toHaveBeenCalledWith(
         expect.objectContaining({
-          agentDefinition: expect.objectContaining({ agentType: "Explore" }),
+          agentDefinition: expect.objectContaining({ agentType: "teammate" }),
         }),
       );
     });
