@@ -19,8 +19,10 @@ import { streamChat } from "../../services/api.js";
 import type { StreamEvent } from "../../services/api.js";
 import { createUserMessage, createAssistantMessage } from "../../messages.js";
 import type { Message, ContentBlock, ToolUseBlock } from "../../messages.js";
+import { createDebug } from "../../utils/debug.js";
 
 const DEFAULT_MAX_TURNS = 20;
+const debug = createDebug("agent:orchestrator");
 
 // ──────────────────────────────────────────────
 // Tool Filtering
@@ -242,6 +244,10 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
 
   const startTime = Date.now();
   const effectiveMaxTurns = maxTurns ?? agentDefinition.maxTurns ?? DEFAULT_MAX_TURNS;
+  const shortId = (agentId ?? "unknown").slice(-8);
+  const prefix = `${agentDefinition.agentType ?? "agent"}:${shortId}`;
+
+  debug("%s starting, maxTurns=%d", prefix, effectiveMaxTurns);
 
   // 1. Build filtered tool pool
   const filteredRegistry = filterToolsForAgent(parentRegistry, agentDefinition);
@@ -266,6 +272,7 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
   // 4. Streaming loop
   for (let turn = 0; turn < effectiveMaxTurns; turn++) {
     if (context.abortSignal.aborted) {
+      debug("%s aborted at turn %d", prefix, turn);
       break;
     }
 
@@ -274,11 +281,14 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
     let stopReason: string | null;
 
     try {
+      debug("%s turn %d — calling API", prefix, turn);
       const stream = streamChat(messages, agentConfig, context.abortSignal);
       const result = await collectStreamResponse(stream);
       responseContent = result.content;
       stopReason = result.stopReason;
+      debug("%s turn %d — API returned stopReason=%s, blocks=%d", prefix, turn, stopReason, result.content.length);
     } catch (err) {
+      debug("%s turn %d — API error: %s", prefix, turn, err instanceof Error ? err.message : String(err));
       // If aborted, return what we have
       if (context.abortSignal.aborted) {
         break;
@@ -340,9 +350,11 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
       workingDirectory: effectiveCwd,
     };
 
+    debug("%s turn %d — executing %d tool(s): %s", prefix, turn, toolUseBlocks.length, toolUseBlocks.map(t => t.name).join(", "));
     const results = await executeAllToolBatches(
       toolUseBlocks, filteredRegistry, toolExecContext,
     );
+    debug("%s turn %d — tools done", prefix, turn);
 
     const toolResultBlocks: ContentBlock[] = results.map((r) => ({
       type: "tool_result" as const,
@@ -358,6 +370,8 @@ export async function runSubAgent(params: RunSubAgentParams): Promise<AgentToolR
 
   // 5. Extract final text
   const content = extractTextFromMessages(messages);
+  const elapsed = Date.now() - startTime;
+  debug("%s completed — tools=%d, duration=%dms", prefix, totalToolUseCount, elapsed);
 
   return {
     agentType: agentDefinition.agentType,

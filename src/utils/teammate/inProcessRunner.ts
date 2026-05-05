@@ -9,6 +9,9 @@ import {
   createIdleNotification,
   writeToMailbox,
 } from "../teammateMailbox.js";
+import { createDebug } from "../debug.js";
+
+const debug = createDebug("agent:runner");
 
 export interface InProcessRunnerParams {
   agentDefinition: AgentDefinition;
@@ -45,6 +48,10 @@ export async function runInProcessTeammate(
   } = params;
 
   const startTime = Date.now();
+  const shortId = agentId.slice(-8);
+  const prefix = `runner:${shortId}`;
+
+  debug("%s starting", prefix);
 
   const result = await runWithTeammateContext(teammateContext, async () => {
     const result = await runSubAgent({
@@ -65,6 +72,7 @@ export async function runInProcessTeammate(
   // Send idle notification to team lead
   try {
     const teamName = getTeamName();
+    debug("%s sending idle notification, teamName=%s", prefix, teamName);
     const notification = createIdleNotification(agentId, {
       idleReason: "available",
     });
@@ -77,14 +85,19 @@ export async function runInProcessTeammate(
       },
       teamName,
     );
+    debug("%s idle notification sent", prefix);
   } catch {
+    debug("%s idle notification failed", prefix);
     // Non-critical: idle notification failure should not break the runner
   }
+
+  const durationMs = Date.now() - startTime;
+  debug("%s completed — duration=%dms, contentLen=%d", prefix, durationMs, result.content.length);
 
   return {
     content: result.content,
     agentType: result.agentType,
     totalToolUseCount: result.totalToolUseCount,
-    totalDurationMs: Date.now() - startTime,
+    totalDurationMs: durationMs,
   };
 }

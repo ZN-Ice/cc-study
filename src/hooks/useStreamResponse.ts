@@ -8,6 +8,9 @@ import type { PermissionManager } from "../permissions/manager.js";
 import type { PermissionDecision } from "../permissions/types.js";
 import type { PermissionRequest } from "../components/PermissionConfirm.js";
 import type { AgentProgressEvent } from "../tools/AgentTool/types.js";
+import { getTeamName } from "../utils/teammate.js";
+import { readTeammateResultsFromMailbox, type TeammateCompletionResult } from "../utils/teammateMailbox.js";
+import { cancelAllRunners } from "../utils/teammate/runnerRegistry.js";
 
 interface UseStreamResponseReturn {
   readonly isLoading: boolean;
@@ -23,6 +26,12 @@ interface UseStreamResponseReturn {
   readonly executingTools: readonly string[];
   /** Active agent progress entries (one per running sub-agent) */
   readonly activeAgents: readonly AgentProgressEvent[];
+  /**
+   * Check the mailbox for teammate results and stage them for injection.
+   * Returns the number of results found. Results are injected into the
+   * next user message sent via sendMessage().
+   */
+  readonly injectTeammateResults: () => Promise<number>;
 }
 
 /** A pending permission request entry in the queue */
@@ -194,6 +203,13 @@ export function useStreamResponse(
   messagesRef.current = messages;
 
   /**
+   * Pending teammate results collected by external polling (App.tsx).
+   * These are injected into the next user message so the LLM sees them.
+   * Using a ref to avoid re-renders on every poll tick.
+   */
+  const pendingTeammateResultsRef = useRef<TeammateCompletionResult[]>([]);
+
+  /**
    * Sync permissionRequest with pendingQueue front.
    * This ensures the UI always shows the front of the queue.
    */
@@ -246,6 +262,9 @@ export function useStreamResponse(
   const cancel = useCallback(() => {
     abortControllerRef.current?.abort("user-cancel");
 
+    // Cancel all background teammates
+    cancelAllRunners();
+
     // Use ref to always get the latest queue — avoids stale closure
     const queue = pendingQueueRef.current;
     for (const pending of queue) {
@@ -260,11 +279,28 @@ export function useStreamResponse(
 
   const sendMessage = useCallback(
     async (content: string) => {
-      // 1. Create and append user message
-      const userMsg = createUserMessage(content);
+      // 1. Collect pending teammate results (injected by App.tsx polling)
+      const pendingResults = pendingTeammateResultsRef.current;
+      pendingTeammateResultsRef.current = [];
+
+      // 2. Create user message with optional teammate results injected
+      const userContentBlocks: ContentBlock[] = [{ type: "text", text: content }];
+      if (pendingResults.length > 0) {
+        const injectionTexts: string[] = [];
+        for (const r of pendingResults) {
+          injectionTexts.push(
+            `<teammate-result teammate_id="${r.agentName}" agent_type="${r.agentType}" tool_use_count="${r.toolUseCount}" duration_ms="${r.durationMs}">\n${r.content}\n</teammate-result>`,
+          );
+        }
+        userContentBlocks.push({
+          type: "text",
+          text: `\n\n--- Teammate Results ---\n${injectionTexts.join("\n\n")}`,
+        });
+      }
+      const userMsg = createUserMessage(userContentBlocks);
       setMessages((prev) => [...prev, userMsg]);
 
-      // 2. Setup abort controller
+      // 3. Setup abort controller
       const controller = new AbortController();
       abortControllerRef.current = controller;
       setIsLoading(true);
@@ -421,5 +457,27 @@ export function useStreamResponse(
     [config, setMessages, toolRegistry, toolContext],
   );
 
-  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents };
+  /**
+   * Check the mailbox for unread teammate results and stage them for
+   * injection into the next user message. Returns the number of results found.
+   */
+  const injectTeammateResults = useCallback(async (): Promise<number> => {
+    try {
+      const teamName = getTeamName();
+      if (!teamName) return 0;
+
+      const results = await readTeammateResultsFromMailbox(teamName);
+      if (results.length > 0) {
+        pendingTeammateResultsRef.current = [
+          ...pendingTeammateResultsRef.current,
+          ...results,
+        ];
+      }
+      return results.length;
+    } catch {
+      return 0;
+    }
+  }, []);
+
+  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents, injectTeammateResults };
 }

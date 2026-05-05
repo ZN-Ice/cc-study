@@ -5,6 +5,10 @@
  */
 
 import { writeToMailbox, createIdleNotification, TEAM_LEAD_NAME } from "../teammateMailbox.js";
+import { readTeamFile, writeTeamFileSync } from "../teamHelper.js";
+
+/** Maximum length for the summary field in an idle notification. */
+const SUMMARY_MAX_LENGTH = 10_000;
 
 interface RunnerEntry {
   agentId: string;
@@ -68,11 +72,17 @@ export function withRunnerLifecycle(
   return promise
     .then(async (result) => {
       unregisterRunner(agentId);
+      // Remove teammate from team.json members list
+      removeFromTeamFile(teamName, agentName);
       // Notify team lead of completion
       try {
+        // 1. Send an idle notification with a generous summary
+        const summary = result.content.length > SUMMARY_MAX_LENGTH
+          ? result.content.slice(0, SUMMARY_MAX_LENGTH) + "\n\n...(truncated)"
+          : result.content;
         const notification = createIdleNotification(agentId, {
           idleReason: "available",
-          summary: `Completed: ${result.content.slice(0, 200)}`,
+          summary: `Completed: ${summary}`,
         });
         await writeToMailbox(
           TEAM_LEAD_NAME,
@@ -83,12 +93,37 @@ export function withRunnerLifecycle(
           },
           teamName,
         );
+
+        // 2. Also send a dedicated completion message with the FULL result
+        //    so the team lead can read the complete output regardless of
+        //    summary truncation.
+        const completionMsg = JSON.stringify({
+          type: "teammate_completion",
+          agentId,
+          agentName,
+          content: result.content,
+          agentType: result.agentType,
+          toolUseCount: result.totalToolUseCount,
+          durationMs: result.totalDurationMs,
+        });
+        await writeToMailbox(
+          TEAM_LEAD_NAME,
+          {
+            from: agentName,
+            text: completionMsg,
+            timestamp: new Date().toISOString(),
+            summary: `[result] ${agentName} completed — ${result.content.length} chars`,
+          },
+          teamName,
+        );
       } catch {
         // Non-critical
       }
     })
     .catch(async (err) => {
       unregisterRunner(agentId);
+      // Remove teammate from team.json members list
+      removeFromTeamFile(teamName, agentName);
       // Notify team lead of failure
       try {
         const notification = createIdleNotification(agentId, {
@@ -108,4 +143,23 @@ export function withRunnerLifecycle(
         // Non-critical
       }
     });
+}
+
+/**
+ * Remove a teammate from the team.json members list.
+ * Called when a teammate completes or fails.
+ */
+function removeFromTeamFile(teamName: string, agentName: string): void {
+  try {
+    const teamFile = readTeamFile(teamName);
+    if (teamFile) {
+      const initialLength = teamFile.members.length;
+      teamFile.members = teamFile.members.filter((m) => m.name !== agentName);
+      if (teamFile.members.length !== initialLength) {
+        writeTeamFileSync(teamName, teamFile);
+      }
+    }
+  } catch {
+    // Non-critical: team.json update failure should not affect teammate lifecycle
+  }
 }

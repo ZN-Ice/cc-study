@@ -4,7 +4,7 @@ import type { ToolContext } from "../../tools/types.js";
 import type { ToolRegistry } from "../../tools/registry.js";
 import type { APIConfig } from "../../services/api.js";
 import { createTeammateContext, type TeammateContext } from "../teammateContext.js";
-import { generateAgentId } from "../teamHelper.js";
+import { generateAgentId, readTeamFile, writeTeamFileSync, type TeamMember } from "../teamHelper.js";
 import { runInProcessTeammate } from "./inProcessRunner.js";
 import { registerRunner, withRunnerLifecycle } from "./runnerRegistry.js";
 
@@ -84,6 +84,30 @@ export function spawnInProcessTeammate(
       abortController,
       promise: lifecyclePromise,
     });
+
+    // Add this teammate to the team.json members list so send_message can find it
+    try {
+      const teamFile = readTeamFile(teamName);
+      if (teamFile) {
+        // Check if already registered (avoid duplicates on re-spawn)
+        const alreadyRegistered = teamFile.members.some((m) => m.name === name);
+        if (!alreadyRegistered) {
+          const newMember: TeamMember = {
+            agentId,
+            name,
+            agentType: config.agentDefinition.agentType,
+            joinedAt: Date.now(),
+            cwd: config.context.workingDirectory,
+            color: color ?? "white",
+            isActive: true,
+          };
+          teamFile.members.push(newMember);
+          writeTeamFileSync(teamName, teamFile);
+        }
+      }
+    } catch {
+      // Non-critical: team.json update failure should not block teammate spawn
+    }
 
     return {
       success: true,
