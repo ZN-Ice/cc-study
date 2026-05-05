@@ -27,6 +27,7 @@ import { initBundledSkills, getBundledSkills } from "../skills/index.js";
 import { setSkillLookup } from "../tools/SkillTool/index.js";
 import type { SkillCommand } from "../skills/types.js";
 import { cancelAllRunners } from "../utils/teammate/runnerRegistry.js";
+import { reset as resetCostTracker } from "../cost-tracker.js";
 
 interface AppProps {
   readonly model: string;
@@ -136,7 +137,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     // mcpRevision is not used directly but forces memo invalidation
   }), [apiKey, model, toolRegistry, mcpRevision]);
 
-  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents, injectTeammateResults, tokenUsage, totalCost, sessionDuration } =
+  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents, injectTeammateResults, tokenUsage, totalCost, sessionDuration, resetSessionMetrics } =
     useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);
 
   // Keep a ref to sendMessage so polling can always call the latest version
@@ -207,11 +208,16 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
         abortSignal: new AbortController().signal,
         workingDirectory: process.cwd(),
         canUseTool: (toolName: string) => toolRegistry.has(toolName),
+        setMessages: (updater) => setMessages(updater),
+        resetSession: () => {
+          resetCostTracker();
+          resetSessionMetrics();
+        },
       };
 
       return executeCommand(input, commandContext, loadedSkills);
     },
-    [toolRegistry, loadedSkills],
+    [toolRegistry, loadedSkills, setMessages, resetSessionMetrics],
   );
 
   const handleSubmit = useCallback(

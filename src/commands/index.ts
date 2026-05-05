@@ -10,6 +10,7 @@ import { compactCommand } from './builtins/compact.js'
 import { configCommand } from './builtins/config.js'
 import { resumeCommand } from './builtins/resume.js'
 import { memoryCommand } from './builtins/memory.js'
+import { clearCommand } from './builtins/clear.js'
 
 // Built-in commands registered by default
 const BUILTIN_COMMANDS: Command[] = [
@@ -18,6 +19,7 @@ const BUILTIN_COMMANDS: Command[] = [
   configCommand,
   resumeCommand,
   memoryCommand,
+  clearCommand,
 ]
 
 /**

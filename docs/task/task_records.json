@@ -1565,5 +1565,19 @@
     "finish_time": "2026-04-26 22:55:00",
     "check_result": "通过",
     "remark": "实现层级命令支持：添加SubCommand类型定义，CommandSelector支持子命令视图，/memory命令添加subCommands定义"
+  },
+  {
+    "task_id": "P10012",
+    "task_type": "功能开发",
+    "phase": "Phase 10",
+    "module": "cmd",
+    "source_ref": null,
+    "task_desc": "实现 /new (别名 /clear, /reset) 会话重置命令：清除所有消息历史、重置成本追踪和会话计时器、扩展 CommandContext 添加 resetSession 回调、修复 App.tsx 未向命令上下文传递 setMessages 的缺陷",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-05-05 17:00:00",
+    "finish_time": "2026-05-05 17:45:00",
+    "check_result": "通过",
+    "remark": "实现 src/commands/builtins/clear.ts（/new + 别名 /clear/ /reset）、扩展 CommandContext.resetSession、useStreamResponse 新增 resetSessionMetrics、修复 App.tsx 传递 setMessages 到命令上下文。7 个测试全部通过，全量 1016 个测试通过。typecheck/lint/build 通过"
   }
 ]

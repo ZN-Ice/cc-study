@@ -43,6 +43,8 @@ interface UseStreamResponseReturn {
   readonly toolDurations: readonly { name: string; durationMs: number }[];
   /** Total session duration in milliseconds */
   readonly sessionDuration: number;
+  /** Reset session-level metrics (costs, token usage, durations) */
+  readonly resetSessionMetrics: () => void;
 }
 
 /** A pending permission request entry in the queue */
@@ -202,6 +204,14 @@ export function useStreamResponse(
   const [apiDurationMs, setApiDurationMs] = useState<number | null>(null);
   const [toolDurations, setToolDurations] = useState<readonly { name: string; durationMs: number }[]>([]);
   const sessionStartTimeRef = useRef(Date.now());
+
+  const resetSessionMetrics = useCallback(() => {
+    setTokenUsage(null);
+    setApiDurationMs(null);
+    setToolDurations([]);
+    sessionStartTimeRef.current = Date.now();
+  }, []);
+
   /**
    * Queue of pending permission requests from concurrent sub-agents.
    * State-based so React re-renders on every queue change, ensuring
@@ -579,5 +589,6 @@ export function useStreamResponse(
     apiDurationMs,
     toolDurations,
     sessionDuration: Date.now() - sessionStartTimeRef.current,
+    resetSessionMetrics,
   };
 }
