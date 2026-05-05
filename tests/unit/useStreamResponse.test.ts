@@ -3,6 +3,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useStreamResponse } from "../../src/hooks/useStreamResponse.js";
 import type { APIConfig, StreamEvent } from "../../src/services/api.js";
+import type { TeammateCompletionResult } from "../../src/utils/teammateMailbox.js";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -50,6 +51,18 @@ vi.mock("../../src/services/api.js", async (importOriginal) => {
     ...actual,
     streamChat: vi.fn(),
     resolveApiKey: () => "test-key",
+  };
+});
+
+vi.mock("../../src/utils/teammate.js", () => ({
+  getTeamName: vi.fn(() => null),
+}));
+
+vi.mock("../../src/utils/teammateMailbox.js", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    readTeammateResultsFromMailbox: vi.fn(async () => []),
   };
 });
 
@@ -325,5 +338,170 @@ describe("useStreamResponse", () => {
     expect(result.current.isLoading).toBe(false);
     // Should have completed successfully (BashTool will execute)
     expect(callCount).toBe(2);
+  });
+
+  test("injectTeammateResults returns 0 when no team is active", async () => {
+    const { result } = renderHook(() =>
+      useStreamResponse([], vi.fn(), mockConfig),
+    );
+
+    const count = await result.current.injectTeammateResults();
+    expect(count).toBe(0);
+  });
+
+  test("injectTeammateResults returns 0 when mailbox is empty", async () => {
+    const { getTeamName } = await import("../../src/utils/teammate.js");
+    vi.mocked(getTeamName).mockReturnValue("test-team");
+
+    const { readTeammateResultsFromMailbox } = await import("../../src/utils/teammateMailbox.js");
+    vi.mocked(readTeammateResultsFromMailbox).mockResolvedValue([]);
+
+    const { result } = renderHook(() =>
+      useStreamResponse([], vi.fn(), mockConfig),
+    );
+
+    const count = await result.current.injectTeammateResults();
+    expect(count).toBe(0);
+  });
+
+  test("injectTeammateResults stages results for next sendMessage", async () => {
+    const { getTeamName } = await import("../../src/utils/teammate.js");
+    vi.mocked(getTeamName).mockReturnValue("test-team");
+
+    const mockResults: TeammateCompletionResult[] = [
+      {
+        agentName: "analyst",
+        content: "Analysis complete",
+        agentType: "teammate",
+        toolUseCount: 5,
+        durationMs: 3000,
+      },
+    ];
+    const { readTeammateResultsFromMailbox } = await import("../../src/utils/teammateMailbox.js");
+    vi.mocked(readTeammateResultsFromMailbox).mockResolvedValue(mockResults);
+
+    const { streamChat } = await import("../../src/services/api.js");
+    const mockStreamChat = vi.mocked(streamChat);
+    mockStreamChat.mockImplementation(async function* () {
+      yield* textStreamEvents(["Got it"]);
+    });
+
+    const messagesState: unknown[][] = [[]];
+    const setMessages = vi.fn((updater: (prev: unknown[]) => unknown[]) => {
+      const prev = messagesState[messagesState.length - 1];
+      const next = updater(prev);
+      messagesState.push(next);
+      return next;
+    });
+
+    const { result } = renderHook(() =>
+      useStreamResponse([], setMessages, mockConfig),
+    );
+
+    // Stage teammate results
+    let count: number;
+    await act(async () => {
+      count = await result.current.injectTeammateResults();
+    });
+    expect(count!).toBe(1);
+
+    // Send a message — the staged results should be injected
+    await act(async () => {
+      await result.current.sendMessage("what did the team find?");
+    });
+
+    // The user message should contain the teammate results
+    const flat = messagesState.flat();
+    const userMsg = flat.find(
+      (m) =>
+        typeof m === "object" &&
+        m !== null &&
+        "type" in m &&
+        (m as { type: string }).type === "user" &&
+        "content" in m &&
+        Array.isArray((m as { content: unknown[] }).content) &&
+        (m as { content: Array<{ text?: string }> }).content.some(
+          (c) => c.text?.includes("teammate-result"),
+        ),
+    );
+    expect(userMsg).toBeDefined();
+  });
+
+  test("pending results are cleared after sendMessage consumes them", async () => {
+    const { getTeamName } = await import("../../src/utils/teammate.js");
+    vi.mocked(getTeamName).mockReturnValue("test-team");
+
+    const mockResults: TeammateCompletionResult[] = [
+      {
+        agentName: "scout",
+        content: "Scout report",
+        agentType: "teammate",
+        toolUseCount: 3,
+        durationMs: 1000,
+      },
+    ];
+    const { readTeammateResultsFromMailbox } = await import("../../src/utils/teammateMailbox.js");
+    vi.mocked(readTeammateResultsFromMailbox).mockResolvedValue(mockResults);
+
+    const { streamChat } = await import("../../src/services/api.js");
+    const mockStreamChat = vi.mocked(streamChat);
+    mockStreamChat.mockImplementation(async function* () {
+      yield* textStreamEvents(["OK"]);
+    });
+
+    // Use a proper state accumulator that tracks the latest state
+    let latestState: readonly unknown[] = [];
+    const setMessages = vi.fn((updater: (prev: readonly unknown[]) => readonly unknown[]) => {
+      latestState = updater(latestState);
+      return latestState;
+    });
+
+    const { result } = renderHook(() =>
+      useStreamResponse([], setMessages, mockConfig),
+    );
+
+    // Stage results
+    await act(async () => {
+      await result.current.injectTeammateResults();
+    });
+
+    // First sendMessage consumes the results
+    await act(async () => {
+      await result.current.sendMessage("first");
+    });
+
+    // Find user messages in the accumulated state
+    const userMsgsAfterFirst = latestState.filter(
+      (m) =>
+        typeof m === "object" &&
+        m !== null &&
+        "type" in m &&
+        (m as { type: string }).type === "user",
+    );
+    // First user message should contain teammate results
+    const firstUserMsg = userMsgsAfterFirst[0] as { content: Array<{ text?: string }> };
+    const firstHasResults = firstUserMsg.content.some(
+      (c) => c.text?.includes("teammate-result"),
+    );
+    expect(firstHasResults).toBe(true);
+
+    // Second sendMessage should NOT contain teammate results (they were consumed)
+    await act(async () => {
+      await result.current.sendMessage("second");
+    });
+
+    const userMsgsAfterSecond = latestState.filter(
+      (m) =>
+        typeof m === "object" &&
+        m !== null &&
+        "type" in m &&
+        (m as { type: string }).type === "user",
+    );
+    // The second user message should not contain teammate results
+    const secondUserMsg = userMsgsAfterSecond[1] as { content: Array<{ text?: string }> };
+    const hasTeammateResults = secondUserMsg.content.some(
+      (c) => c.text?.includes("teammate-result"),
+    );
+    expect(hasTeammateResults).toBe(false);
   });
 });

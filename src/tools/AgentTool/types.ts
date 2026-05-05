@@ -81,6 +81,15 @@ export const agentToolInputSchema = z.strictObject({
   subagent_type: z.string().optional().describe(
     "The type of agent to use. Defaults to 'general-purpose'."
   ),
+  team_name: z.string().optional().describe(
+    "Team name for spawning an async teammate. When set, the agent runs " +
+    "asynchronously in-process (via AsyncLocalStorage) and reports results " +
+    "to the team lead's mailbox. The tool returns immediately with the agent ID."
+  ),
+  name: z.string().optional().describe(
+    "Name for this teammate within the team (e.g. 'researcher', 'reviewer'). " +
+    "Only meaningful when team_name is also set."
+  ),
   model: z.string().optional().describe(
     "Optional model override (currently unused, inherits parent model)"
   ),

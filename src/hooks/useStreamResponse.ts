@@ -8,6 +8,9 @@ import type { PermissionManager } from "../permissions/manager.js";
 import type { PermissionDecision } from "../permissions/types.js";
 import type { PermissionRequest } from "../components/PermissionConfirm.js";
 import type { AgentProgressEvent } from "../tools/AgentTool/types.js";
+import { getTeamName } from "../utils/teammate.js";
+import { readTeammateResultsFromMailbox, type TeammateCompletionResult } from "../utils/teammateMailbox.js";
+import { cancelAllRunners, detectStaleTeammates } from "../utils/teammate/runnerRegistry.js";
 
 interface UseStreamResponseReturn {
   readonly isLoading: boolean;
@@ -23,6 +26,12 @@ interface UseStreamResponseReturn {
   readonly executingTools: readonly string[];
   /** Active agent progress entries (one per running sub-agent) */
   readonly activeAgents: readonly AgentProgressEvent[];
+  /**
+   * Check the mailbox for teammate results and stage them for injection.
+   * Returns the number of results found. Results are injected into the
+   * next user message sent via sendMessage().
+   */
+  readonly injectTeammateResults: () => Promise<number>;
 }
 
 /** A pending permission request entry in the queue */
@@ -35,13 +44,17 @@ interface PendingPermissionEntry {
  * Extract tool-specific details from a tool's input for permission display.
  * Returns subtitle (one-line summary) and content (detail text).
  */
-function extractToolPermissionDetails(
+export function extractToolPermissionDetails(
   toolName: string,
   rawInput: Record<string, unknown>,
 ): { subtitle?: string; content?: string } {
   switch (toolName) {
     case "Agent": {
-      const subagentType = (rawInput.subagent_type as string) ?? "general-purpose";
+      const hasTeamName = rawInput.team_name !== undefined;
+      // Teammates always display as "teammate" regardless of subagent_type
+      const subagentType = hasTeamName
+        ? "teammate"
+        : ((rawInput.subagent_type as string) ?? "general-purpose");
       const description = (rawInput.description as string) ?? "";
       return {
         subtitle: `Type: ${subagentType}${description ? ` — ${description}` : ""}`,
@@ -190,6 +203,13 @@ export function useStreamResponse(
   messagesRef.current = messages;
 
   /**
+   * Pending teammate results collected by external polling (App.tsx).
+   * These are injected into the next user message so the LLM sees them.
+   * Using a ref to avoid re-renders on every poll tick.
+   */
+  const pendingTeammateResultsRef = useRef<TeammateCompletionResult[]>([]);
+
+  /**
    * Sync permissionRequest with pendingQueue front.
    * This ensures the UI always shows the front of the queue.
    */
@@ -242,6 +262,9 @@ export function useStreamResponse(
   const cancel = useCallback(() => {
     abortControllerRef.current?.abort("user-cancel");
 
+    // Cancel all background teammates
+    cancelAllRunners();
+
     // Use ref to always get the latest queue — avoids stale closure
     const queue = pendingQueueRef.current;
     for (const pending of queue) {
@@ -256,11 +279,28 @@ export function useStreamResponse(
 
   const sendMessage = useCallback(
     async (content: string) => {
-      // 1. Create and append user message
-      const userMsg = createUserMessage(content);
+      // 1. Collect pending teammate results (injected by App.tsx polling)
+      const pendingResults = pendingTeammateResultsRef.current;
+      pendingTeammateResultsRef.current = [];
+
+      // 2. Create user message with optional teammate results injected
+      const userContentBlocks: ContentBlock[] = [{ type: "text", text: content }];
+      if (pendingResults.length > 0) {
+        const injectionTexts: string[] = [];
+        for (const r of pendingResults) {
+          injectionTexts.push(
+            `<teammate-result teammate_id="${r.agentName}" agent_type="${r.agentType}" tool_use_count="${r.toolUseCount}" duration_ms="${r.durationMs}">\n${r.content}\n</teammate-result>`,
+          );
+        }
+        userContentBlocks.push({
+          type: "text",
+          text: `\n\n--- Teammate Results ---\n${injectionTexts.join("\n\n")}`,
+        });
+      }
+      const userMsg = createUserMessage(userContentBlocks);
       setMessages((prev) => [...prev, userMsg]);
 
-      // 2. Setup abort controller
+      // 3. Setup abort controller
       const controller = new AbortController();
       abortControllerRef.current = controller;
       setIsLoading(true);
@@ -417,5 +457,57 @@ export function useStreamResponse(
     [config, setMessages, toolRegistry, toolContext],
   );
 
-  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents };
+  /**
+   * Check the mailbox for unread teammate results and stage them for
+   * injection into the next user message. Also detects stale teammates
+   * (no heartbeat for >45s) and injects a notification.
+   * Returns the number of new items found (results + stale notifications).
+   */
+  const injectTeammateResults = useCallback(async (): Promise<number> => {
+    try {
+      const teamName = getTeamName();
+      if (!teamName) return 0;
+
+      let count = 0;
+
+      // 1. Check for completion results
+      const results = await readTeammateResultsFromMailbox(teamName);
+      if (results.length > 0) {
+        pendingTeammateResultsRef.current = [
+          ...pendingTeammateResultsRef.current,
+          ...results,
+        ];
+        count += results.length;
+      }
+
+      // 2. Check for stale (possibly crashed) teammates
+      const stale = detectStaleTeammates();
+      for (const s of stale) {
+        const staleResult: TeammateCompletionResult = {
+          agentName: s.agentName,
+          content: `[WARNING] Teammate "${s.agentName}" has been unresponsive for ${Math.round(s.staleMs / 1000)}s (no heartbeat). It may be stuck or crashed. You can send a message to check, or cancel it.`,
+          agentType: "teammate-stale",
+          toolUseCount: 0,
+          durationMs: s.staleMs,
+        };
+        // Avoid duplicate stale notifications for the same agent
+        const alreadyPending = pendingTeammateResultsRef.current.some(
+          (r) => r.agentType === "teammate-stale" && r.agentName === s.agentName,
+        );
+        if (!alreadyPending) {
+          pendingTeammateResultsRef.current = [
+            ...pendingTeammateResultsRef.current,
+            staleResult,
+          ];
+          count++;
+        }
+      }
+
+      return count;
+    } catch {
+      return 0;
+    }
+  }, []);
+
+  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents, injectTeammateResults };
 }

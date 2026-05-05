@@ -25,6 +25,7 @@ import { loadAllSkills } from "../skills/loader.js";
 import { initBundledSkills, getBundledSkills } from "../skills/index.js";
 import { setSkillLookup } from "../tools/SkillTool/index.js";
 import type { SkillCommand } from "../skills/types.js";
+import { cancelAllRunners } from "../utils/teammate/runnerRegistry.js";
 
 interface AppProps {
   readonly model: string;
@@ -86,10 +87,11 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     return () => { cancelled = true; };
   }, [toolRegistry]);
 
-  // Cleanup MCP connections on unmount
+  // Cleanup: disconnect MCP clients and cancel all teammate runners on unmount
   useEffect(() => {
     return () => {
       mcpLoadResultRef.current?.clientManager.disconnectAll().catch(() => {});
+      cancelAllRunners();
     };
   }, []);
 
@@ -133,8 +135,33 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     // mcpRevision is not used directly but forces memo invalidation
   }), [apiKey, model, toolRegistry, mcpRevision]);
 
-  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents } =
+  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents, injectTeammateResults } =
     useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);
+
+  // Keep a ref to sendMessage so polling can always call the latest version
+  const sendMessageRef = useRef(sendMessage);
+  sendMessageRef.current = sendMessage;
+
+  // Poll for teammate results when idle, auto-send when results arrive
+  const sendingRef = useRef(false); // prevent re-entrant sends
+  useEffect(() => {
+    if (isLoading) return;
+    const interval = setInterval(async () => {
+      if (sendingRef.current) return; // already sending from a previous poll
+      try {
+        const count = await injectTeammateResults();
+        if (count > 0) {
+          sendingRef.current = true;
+          await sendMessageRef.current("");
+        }
+      } catch {
+        // ignore
+      } finally {
+        sendingRef.current = false;
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isLoading, injectTeammateResults]);
 
   const requestExit = useCallback(() => {
     const result = twoPressReducer(exitState, "press");
@@ -162,9 +189,14 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       return;
     }
 
-    // Escape: same two-press exit logic when idle
-    if (key.escape && !isLoading) {
-      requestExit();
+    // Escape: cancel when loading, or two-press exit when idle
+    if (key.escape) {
+      if (isLoading) {
+        cancel();
+      } else {
+        requestExit();
+      }
+      return;
     }
   });
 

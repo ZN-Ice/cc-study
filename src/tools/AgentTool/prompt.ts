@@ -34,6 +34,10 @@ export function getAgentToolDescription(definitions: AgentDefinition[]): string 
     "- When the agent is done, it will return a single message back to you\n" +
     "- You can optionally specify a subagent_type to use a specialized agent\n" +
     "- If unsure which agent type to use, omit subagent_type (defaults to general-purpose)\n" +
-    "- Do NOT use the agent tool for simple lookups that you can do yourself"
+    "- Do NOT use the agent tool for simple lookups that you can do yourself\n" +
+    "- To spawn an async teammate within a team, set team_name and name — " +
+    "the teammate runs asynchronously and reports results to the team lead's mailbox. " +
+    "Always uses the 'teammate' agent type (all tools except Agent/team_create). " +
+    "Do NOT set subagent_type when spawning a teammate"
   );
 }

@@ -34,6 +34,8 @@ import {
 import type { AgentWorktreeInfo } from "../../utils/worktree.js";
 import type { Message } from "../../messages.js";
 import { createAssistantMessage, createUserMessage } from "../../messages.js";
+import { spawnInProcessTeammate } from "../../utils/teammate/spawnInProcess.js";
+import { TEAM_LEAD_NAME } from "../../utils/teammateMailbox.js";
 
 /** Counter for generating unique agent IDs within a session */
 let agentIdCounter = 0;
@@ -55,6 +57,14 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
   ): Promise<ValidationResult> {
     if (!input.prompt.trim()) {
       return { ok: false, error: "Error: prompt is required" };
+    }
+
+    // Spawn path: team_name is set → use 'teammate' agent, skip type check
+    if (input.team_name) {
+      if (!input.name?.trim()) {
+        return { ok: false, error: "Error: name is required when team_name is set" };
+      }
+      return { ok: true };
     }
 
     // In fork mode, subagent_type is optional (defaults to fork)
@@ -127,6 +137,11 @@ export const AgentTool: Tool<typeof agentToolInputSchema> = {
     // Resolve effective isolation: input param overrides agent definition
     const selectedAgent = isForkPath ? FORK_AGENT : agentDefinitions.get(effectiveType);
     const effectiveIsolation = input.isolation ?? selectedAgent?.isolation;
+
+    // Spawn path: team_name is set → launch async in-process teammate
+    if (input.team_name) {
+      return executeSpawnPath(input, apiConfig, parentRegistry, context);
+    }
 
     // Create worktree if isolation requested
     let worktreeInfo: AgentWorktreeInfo | undefined;
@@ -336,3 +351,61 @@ async function executeForkPath(
 
 /** Re-export agent definitions registry for testing */
 export { agentDefinitions };
+
+/**
+ * Execute the spawn path: launch an async in-process teammate.
+ *
+ * The teammate runs asynchronously via AsyncLocalStorage and reports
+ * results to the team lead's mailbox. This function returns immediately
+ * with the agent ID so the main REPL loop is not blocked.
+ */
+async function executeSpawnPath(
+  input: AgentToolInput,
+  apiConfig: import("../../services/api.js").APIConfig,
+  parentRegistry: import("../registry.js").ToolRegistry,
+  context: ToolContext,
+): Promise<ToolResult> {
+  const teamName = input.team_name!;
+  const name = input.name ?? "teammate";
+  // Teammates always use the 'teammate' agent definition.
+  // subagent_type is ignored here — the prompt no longer invites the LLM
+  // to override it, and we enforce it defensively.
+  const agentType = "teammate";
+  const agentDef = agentDefinitions.get(agentType);
+
+  const spawnResult = spawnInProcessTeammate({
+    name,
+    teamName,
+    prompt: input.prompt,
+    description: input.description,
+    agentDefinition: agentDef ?? agentDefinitions.get("general-purpose")!,
+    apiConfig,
+    parentRegistry,
+    context,
+    maxTurns: agentDef?.maxTurns,
+  });
+
+  if (!spawnResult.success) {
+    return {
+      output: `Failed to spawn teammate: ${spawnResult.error}`,
+      error: true,
+    };
+  }
+
+  return {
+    output: JSON.stringify({
+      status: "teammate_spawned",
+      agent_id: spawnResult.agentId,
+      teammate_name: name,
+      team_name: teamName,
+      agent_type: agentType,
+      message: `Teammate "${name}" (${spawnResult.agentId}) spawned in team "${teamName}" as "${agentType}". It will report results to ${TEAM_LEAD_NAME}'s mailbox.`,
+    }, null, 2),
+    metadata: {
+      agentId: spawnResult.agentId,
+      teamName,
+      agentType,
+      spawned: true,
+    },
+  };
+}

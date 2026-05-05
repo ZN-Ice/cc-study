@@ -4,6 +4,9 @@ import { join } from "node:path";
 import type { Message } from "../messages.js";
 import { normalizeForAPI } from "../messages.js";
 import type { ToolDefinition } from "../tools/types.js";
+import { createDebug } from "../utils/debug.js";
+
+const debug = createDebug("api");
 
 // ──────────────────────────────────────────────
 // Types
@@ -16,6 +19,11 @@ export interface APIConfig {
   readonly systemPrompt: string;
   readonly temperature: number;
   readonly tools?: readonly ToolDefinition[];
+  /**
+   * Timeout in milliseconds for the entire API request (fetch + stream).
+   * Default: 300_000 (5 minutes). Set to 0 to disable.
+   */
+  readonly requestTimeout?: number;
 }
 
 export interface MessageStartEvent {
@@ -74,15 +82,36 @@ export type StreamEvent =
 /**
  * Parse a Server-Sent Events stream from a Response.
  * Yields parsed JSON events, skipping non-data lines.
+ *
+ * @param chunkTimeoutMs Max milliseconds to wait for a single chunk before
+ *   aborting. Default: 60_000 (60s). Prevents indefinite hangs when the
+ *   server stops sending data but keeps the connection open.
  */
-export async function* parseSSEStream(response: Response): AsyncGenerator<StreamEvent, void> {
+export async function* parseSSEStream(
+  response: Response,
+  chunkTimeoutMs = 60_000,
+): AsyncGenerator<StreamEvent, void> {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
 
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      // Race the read against a per-chunk timeout
+      const readPromise = reader.read();
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        const id = setTimeout(
+          () => reject(new DOMException("Stream read timeout", "TimeoutError")),
+          chunkTimeoutMs,
+        );
+        // Allow the timeout to be cancelled if the read completes first
+        readPromise.then(
+          () => clearTimeout(id),
+          () => clearTimeout(id),
+        );
+      });
+
+      const { done, value } = await Promise.race([readPromise, timeoutPromise]);
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
@@ -169,6 +198,9 @@ const ANTHROPIC_API_URL = resolveApiUrl();
  *
  * Uses raw fetch + SSE parsing instead of the SDK,
  * so we deeply understand the streaming protocol.
+ *
+ * Applies a request-level timeout (default 5 min) and a per-chunk
+ * timeout (60s) to prevent indefinite hangs on stalled connections.
  */
 export async function* streamChat(
   messages: readonly Message[],
@@ -188,6 +220,13 @@ export async function* streamChat(
     body.tools = config.tools;
   }
 
+  // Combine the caller's abort signal with a request-level timeout
+  const requestTimeoutMs = config.requestTimeout ?? 300_000; // 5 minutes
+  const fetchSignal = requestTimeoutMs > 0
+    ? AbortSignal.any([signal, AbortSignal.timeout(requestTimeoutMs)])
+    : signal;
+
+  const t0 = Date.now();
   const response = await fetch(ANTHROPIC_API_URL, {
     method: "POST",
     headers: {
@@ -196,7 +235,7 @@ export async function* streamChat(
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify(body),
-    signal,
+    signal: fetchSignal,
   });
 
   if (!response.ok) {
@@ -206,5 +245,7 @@ export async function* streamChat(
     );
   }
 
+  debug("fetch done in %dms, starting SSE parse", Date.now() - t0);
   yield* parseSSEStream(response);
+  debug("stream done, total=%dms", Date.now() - t0);
 }

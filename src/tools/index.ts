@@ -15,6 +15,8 @@ export { GlobTool } from "./GlobTool.js";
 export { GrepTool } from "./GrepTool.js";
 export { AgentTool } from "./AgentTool/index.js";
 export { SkillTool } from "./SkillTool/index.js";
+export { TeamCreateTool } from "./TeamCreateTool/index.js";
+export { SendMessageTool } from "./SendMessageTool/index.js";
 export { createMcpTool, normalizeMcpName } from "./MCPTool.js";
 
 import { ToolRegistry } from "./registry.js";
@@ -26,6 +28,8 @@ import { GlobTool } from "./GlobTool.js";
 import { GrepTool } from "./GrepTool.js";
 import { AgentTool } from "./AgentTool/index.js";
 import { SkillTool } from "./SkillTool/index.js";
+import { TeamCreateTool } from "./TeamCreateTool/index.js";
+import { SendMessageTool } from "./SendMessageTool/index.js";
 import { createMcpTool } from "./MCPTool.js";
 import { loadMcpConfig } from "../services/mcpConfig.js";
 import { McpClientManager } from "../services/mcpClient.js";
@@ -41,6 +45,8 @@ export function createDefaultRegistry(): ToolRegistry {
   registry.register(GrepTool);
   registry.register(AgentTool);
   registry.register(SkillTool);
+  registry.register(TeamCreateTool);
+  registry.register(SendMessageTool);
   return registry;
 }
 

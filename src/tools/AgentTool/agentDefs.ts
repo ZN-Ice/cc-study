@@ -86,9 +86,10 @@ const teammateAgent: AgentDefinition = {
   maxTurns: 30,
   getSystemPrompt: () =>
     "You are a collaborative teammate in a multi-agent team. " +
-    "Work on your assigned task independently but coordinate with other " +
-    "team members via the send_message tool when needed. " +
-    "Report your results clearly and concisely when done.",
+    "Work on your assigned task independently. Your progress is automatically monitored via heartbeat. " +
+    "Coordinate with other team members via send_message ONLY when you need to share findings or request input. " +
+    "Report your results clearly and concisely when done — results are delivered to the team lead automatically. " +
+    "DO NOT send status update messages unless explicitly asked.",
 };
 
 /**

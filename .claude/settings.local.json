@@ -42,7 +42,11 @@
       "Bash(npx eslint *)",
       "Bash(echo \"Exit code: $?\")",
       "Bash(python3 -c ' *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(git *)",
+      "Bash(node *)"
     ]
   }
 }

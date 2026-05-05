@@ -23,6 +23,7 @@ import {
   isTaskAssignment,
   TEAM_LEAD_NAME,
   readUnreadMessages,
+  readTeammateResultsFromMailbox,
 } from "../../../src/utils/teammateMailbox.js";
 
 let testDir: string;
@@ -411,5 +412,187 @@ describe("Message type detection", () => {
     expect(isIdleNotification("null")).toBeNull();
     expect(isShutdownRequest("null")).toBeNull();
     expect(isShutdownApproved("null")).toBeNull();
+  });
+});
+
+describe("readTeammateResultsFromMailbox", () => {
+  test("returns empty array when no unread messages exist", async () => {
+    const originalHome = process.env.HOME;
+    process.env.HOME = testDir;
+    try {
+      const results = await readTeammateResultsFromMailbox("empty-team");
+      expect(results).toEqual([]);
+    } finally {
+      process.env.HOME = originalHome;
+    }
+  });
+
+  test("returns teammate_completion message content", async () => {
+    const originalHome = process.env.HOME;
+    process.env.HOME = testDir;
+    try {
+      const completionMsg = JSON.stringify({
+        type: "teammate_completion",
+        agentId: "searcher@team-a",
+        agentName: "searcher",
+        content: "Found 42 bugs in the codebase",
+        agentType: "Explore",
+        toolUseCount: 5,
+        durationMs: 3000,
+      });
+      await writeToMailbox(TEAM_LEAD_NAME, {
+        from: "searcher",
+        text: completionMsg,
+        timestamp: new Date().toISOString(),
+        summary: "[result] searcher completed",
+      }, "team-a");
+
+      const results = await readTeammateResultsFromMailbox("team-a");
+      expect(results).toHaveLength(1);
+      expect(results[0].agentName).toBe("searcher");
+      expect(results[0].content).toBe("Found 42 bugs in the codebase");
+      expect(results[0].agentType).toBe("Explore");
+      expect(results[0].toolUseCount).toBe(5);
+      expect(results[0].durationMs).toBe(3000);
+    } finally {
+      process.env.HOME = originalHome;
+    }
+  });
+
+  test("reads multiple completion messages", async () => {
+    const originalHome = process.env.HOME;
+    process.env.HOME = testDir;
+    try {
+      await writeToMailbox(TEAM_LEAD_NAME, {
+        from: "researcher",
+        text: JSON.stringify({
+          type: "teammate_completion",
+          agentId: "researcher@team-b",
+          agentName: "researcher",
+          content: "Research results",
+          agentType: "Explore",
+          toolUseCount: 3,
+          durationMs: 2000,
+        }),
+        timestamp: new Date().toISOString(),
+      }, "team-b");
+
+      await writeToMailbox(TEAM_LEAD_NAME, {
+        from: "coder",
+        text: JSON.stringify({
+          type: "teammate_completion",
+          agentId: "coder@team-b",
+          agentName: "coder",
+          content: "Code written",
+          agentType: "general-purpose",
+          toolUseCount: 10,
+          durationMs: 5000,
+        }),
+        timestamp: new Date().toISOString(),
+      }, "team-b");
+
+      const results = await readTeammateResultsFromMailbox("team-b");
+      expect(results).toHaveLength(2);
+      expect(results[0].agentName).toBe("researcher");
+      expect(results[0].content).toBe("Research results");
+      expect(results[1].agentName).toBe("coder");
+      expect(results[1].content).toBe("Code written");
+    } finally {
+      process.env.HOME = originalHome;
+    }
+  });
+
+  test("returns idle notification with Completed: prefix as fallback", async () => {
+    const originalHome = process.env.HOME;
+    process.env.HOME = testDir;
+    try {
+      const idleMsg = createIdleNotification("searcher@team-c", {
+        idleReason: "available",
+        summary: "Completed: Found 5 issues",
+      });
+      await writeToMailbox(TEAM_LEAD_NAME, {
+        from: "searcher",
+        text: JSON.stringify(idleMsg),
+        timestamp: new Date().toISOString(),
+      }, "team-c");
+
+      const results = await readTeammateResultsFromMailbox("team-c");
+      expect(results).toHaveLength(1);
+      expect(results[0].agentName).toBe("searcher");
+      expect(results[0].content).toBe("Found 5 issues");
+    } finally {
+      process.env.HOME = originalHome;
+    }
+  });
+
+  test("marks messages as read after reading", async () => {
+    const originalHome = process.env.HOME;
+    process.env.HOME = testDir;
+    try {
+      await writeToMailbox(TEAM_LEAD_NAME, {
+        from: "searcher",
+        text: JSON.stringify({
+          type: "teammate_completion",
+          agentId: "searcher@team-d",
+          agentName: "searcher",
+          content: "Done",
+          agentType: "Explore",
+          toolUseCount: 0,
+          durationMs: 0,
+        }),
+        timestamp: new Date().toISOString(),
+      }, "team-d");
+
+      await readTeammateResultsFromMailbox("team-d");
+      const remaining = await readUnreadMessages(TEAM_LEAD_NAME, "team-d");
+      expect(remaining).toHaveLength(0);
+    } finally {
+      process.env.HOME = originalHome;
+    }
+  });
+
+  test("skips non-completion messages", async () => {
+    const originalHome = process.env.HOME;
+    process.env.HOME = testDir;
+    try {
+      await writeToMailbox(TEAM_LEAD_NAME, {
+        from: "searcher",
+        text: "plain text message",
+        timestamp: new Date().toISOString(),
+      }, "team-e");
+
+      const results = await readTeammateResultsFromMailbox("team-e");
+      expect(results).toEqual([]);
+    } finally {
+      process.env.HOME = originalHome;
+    }
+  });
+
+  test("handles teammate_completion with 10000+ char content (no truncation)", async () => {
+    const originalHome = process.env.HOME;
+    process.env.HOME = testDir;
+    try {
+      const longContent = "A".repeat(15000);
+      await writeToMailbox(TEAM_LEAD_NAME, {
+        from: "big-results",
+        text: JSON.stringify({
+          type: "teammate_completion",
+          agentId: "big@team-f",
+          agentName: "big-results",
+          content: longContent,
+          agentType: "general-purpose",
+          toolUseCount: 100,
+          durationMs: 60000,
+        }),
+        timestamp: new Date().toISOString(),
+      }, "team-f");
+
+      const results = await readTeammateResultsFromMailbox("team-f");
+      expect(results).toHaveLength(1);
+      expect(results[0].content).toBe(longContent);
+      expect(results[0].content.length).toBe(15000);
+    } finally {
+      process.env.HOME = originalHome;
+    }
   });
 });
