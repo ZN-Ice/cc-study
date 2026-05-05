@@ -254,6 +254,8 @@ export async function readTeammateResultsFromMailbox(
 
       try {
         const parsed = JSON.parse(messages[i]!.text);
+        // Skip heartbeat messages — they are metadata, not results
+        if (parsed.type === "teammate_heartbeat") continue;
         if (parsed.type === "teammate_completion") {
           results.push({
             agentName: parsed.agentName ?? messages[i]!.from,
@@ -364,6 +366,14 @@ export interface PermissionRequestMessage {
   tool_use_id: string;
   description: string;
   input: Record<string, unknown>;
+}
+
+export interface TeammateHeartbeatMessage {
+  type: "teammate_heartbeat";
+  agentId: string;
+  agentName: string;
+  timestamp: string;
+  uptimeMs: number;
 }
 
 export function createShutdownRequestMessage(params: {
@@ -531,6 +541,20 @@ export function isTaskAssignment(
     const parsed = JSON.parse(messageText);
     if (parsed?.type === "task_assignment") {
       return parsed as TaskAssignmentMessage;
+    }
+  } catch {
+    // Not JSON
+  }
+  return null;
+}
+
+export function isHeartbeatMessage(
+  messageText: string,
+): TeammateHeartbeatMessage | null {
+  try {
+    const parsed = JSON.parse(messageText);
+    if (parsed?.type === "teammate_heartbeat") {
+      return parsed as TeammateHeartbeatMessage;
     }
   } catch {
     // Not JSON

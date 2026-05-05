@@ -10,7 +10,7 @@ import type { PermissionRequest } from "../components/PermissionConfirm.js";
 import type { AgentProgressEvent } from "../tools/AgentTool/types.js";
 import { getTeamName } from "../utils/teammate.js";
 import { readTeammateResultsFromMailbox, type TeammateCompletionResult } from "../utils/teammateMailbox.js";
-import { cancelAllRunners } from "../utils/teammate/runnerRegistry.js";
+import { cancelAllRunners, detectStaleTeammates } from "../utils/teammate/runnerRegistry.js";
 
 interface UseStreamResponseReturn {
   readonly isLoading: boolean;
@@ -459,21 +459,51 @@ export function useStreamResponse(
 
   /**
    * Check the mailbox for unread teammate results and stage them for
-   * injection into the next user message. Returns the number of results found.
+   * injection into the next user message. Also detects stale teammates
+   * (no heartbeat for >45s) and injects a notification.
+   * Returns the number of new items found (results + stale notifications).
    */
   const injectTeammateResults = useCallback(async (): Promise<number> => {
     try {
       const teamName = getTeamName();
       if (!teamName) return 0;
 
+      let count = 0;
+
+      // 1. Check for completion results
       const results = await readTeammateResultsFromMailbox(teamName);
       if (results.length > 0) {
         pendingTeammateResultsRef.current = [
           ...pendingTeammateResultsRef.current,
           ...results,
         ];
+        count += results.length;
       }
-      return results.length;
+
+      // 2. Check for stale (possibly crashed) teammates
+      const stale = detectStaleTeammates();
+      for (const s of stale) {
+        const staleResult: TeammateCompletionResult = {
+          agentName: s.agentName,
+          content: `[WARNING] Teammate "${s.agentName}" has been unresponsive for ${Math.round(s.staleMs / 1000)}s (no heartbeat). It may be stuck or crashed. You can send a message to check, or cancel it.`,
+          agentType: "teammate-stale",
+          toolUseCount: 0,
+          durationMs: s.staleMs,
+        };
+        // Avoid duplicate stale notifications for the same agent
+        const alreadyPending = pendingTeammateResultsRef.current.some(
+          (r) => r.agentType === "teammate-stale" && r.agentName === s.agentName,
+        );
+        if (!alreadyPending) {
+          pendingTeammateResultsRef.current = [
+            ...pendingTeammateResultsRef.current,
+            staleResult,
+          ];
+          count++;
+        }
+      }
+
+      return count;
     } catch {
       return 0;
     }

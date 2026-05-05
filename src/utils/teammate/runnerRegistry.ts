@@ -6,6 +6,7 @@
 
 import { writeToMailbox, createIdleNotification, TEAM_LEAD_NAME } from "../teammateMailbox.js";
 import { readTeamFile, writeTeamFileSync } from "../teamHelper.js";
+import { startHeartbeat, stopHeartbeat, detectStaleTeammates } from "./heartbeat.js";
 
 /** Maximum length for the summary field in an idle notification. */
 const SUMMARY_MAX_LENGTH = 10_000;
@@ -25,9 +26,11 @@ export function registerRunner(entry: RunnerEntry): void {
     cancelRunner(entry.agentId);
   }
   runners.set(entry.agentId, entry);
+  startHeartbeat(entry.agentId, entry.agentName);
 }
 
 function unregisterRunner(agentId: string): void {
+  stopHeartbeat(agentId);
   runners.delete(agentId);
 }
 
@@ -163,3 +166,6 @@ function removeFromTeamFile(teamName: string, agentName: string): void {
     // Non-critical: team.json update failure should not affect teammate lifecycle
   }
 }
+
+// Re-export heartbeat detection for leader-side polling
+export { detectStaleTeammates } from "./heartbeat.js";
