@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Box, Text } from "ink";
+import { formatNumber } from "../utils/format.js";
 
 export interface AgentProgressProps {
   /** Agent type (e.g. "general-purpose", "Explore", "Plan") */
@@ -21,6 +22,10 @@ export interface AgentProgressProps {
   readonly startTime: number;
   /** Last N tool invocations as short strings */
   readonly recentTools?: readonly string[];
+  /** Token usage for this agent */
+  readonly tokenCount?: number;
+  /** Model used by this agent */
+  readonly model?: string;
 }
 
 export const AgentProgress: React.FC<AgentProgressProps> = ({
@@ -29,6 +34,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   toolUseCount,
   startTime,
   recentTools,
+  tokenCount,
+  model,
 }) => {
   const [elapsed, setElapsed] = useState(() => Math.round((Date.now() - startTime) / 1000));
 
@@ -42,13 +49,24 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const descPart = description ? `: ${description}` : "";
   const timeStr = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m${elapsed % 60}s`;
 
+  const statsParts: string[] = [
+    `${toolUseCount} tool use${toolUseCount !== 1 ? "s" : ""}`,
+  ];
+  if (tokenCount !== undefined) {
+    statsParts.push(`${formatNumber(tokenCount)} tokens`);
+  }
+  if (model !== undefined) {
+    statsParts.push(model);
+  }
+  statsParts.push(timeStr);
+
   return (
     <Box marginLeft={2} flexDirection="column">
       <Text color="magenta">
         🤖 Agent ({agentType}){descPart}
       </Text>
       <Text dimColor>
-        {"   "}{toolUseCount} tool use{toolUseCount !== 1 ? "s" : ""} · {timeStr}
+        {"   "}{statsParts.join(" · ")}
       </Text>
       {recentTools && recentTools.length > 0 && (
         <Box flexDirection="column" marginTop={1}>

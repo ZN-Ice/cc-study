@@ -58,4 +58,82 @@ describe("AgentProgress", () => {
     // No colon after type when no description
     expect(frame).not.toContain("Agent (Explore):");
   });
+
+  // --- tokenCount & model optional props ---
+
+  test("shows token count when provided", () => {
+    const { lastFrame } = render(
+      React.createElement(AgentProgress, {
+        agentType: "Explore",
+        toolUseCount: 2,
+        startTime: Date.now(),
+        tokenCount: 1500,
+      }),
+    );
+    expect(lastFrame()).toContain("1,500 tokens");
+  });
+
+  test("does not show token count when not provided", () => {
+    const { lastFrame } = render(
+      React.createElement(AgentProgress, {
+        agentType: "Explore",
+        toolUseCount: 0,
+        startTime: Date.now(),
+      }),
+    );
+    expect(lastFrame()).not.toContain("tokens");
+  });
+
+  test("shows model when provided", () => {
+    const { lastFrame } = render(
+      React.createElement(AgentProgress, {
+        agentType: "general-purpose",
+        toolUseCount: 1,
+        startTime: Date.now(),
+        model: "claude-sonnet-4-6",
+      }),
+    );
+    expect(lastFrame()).toContain("claude-sonnet-4-6");
+  });
+
+  test("does not show model when not provided", () => {
+    const { lastFrame } = render(
+      React.createElement(AgentProgress, {
+        agentType: "Explore",
+        toolUseCount: 0,
+        startTime: Date.now(),
+      }),
+    );
+    // The stats line should only contain tool uses and time — no model string
+    const frame = lastFrame();
+    expect(frame).not.toContain("claude");
+    expect(frame).not.toContain("sonnet");
+  });
+
+  test("shows both token count and model when both provided", () => {
+    const { lastFrame } = render(
+      React.createElement(AgentProgress, {
+        agentType: "Plan",
+        toolUseCount: 5,
+        startTime: Date.now(),
+        tokenCount: 8200,
+        model: "claude-sonnet-4-6",
+      }),
+    );
+    const frame = lastFrame();
+    expect(frame).toContain("8,200 tokens");
+    expect(frame).toContain("claude-sonnet-4-6");
+  });
+
+  test("formats large token count correctly", () => {
+    const { lastFrame } = render(
+      React.createElement(AgentProgress, {
+        agentType: "general-purpose",
+        toolUseCount: 10,
+        startTime: Date.now(),
+        tokenCount: 12345,
+      }),
+    );
+    expect(lastFrame()).toContain("12,345 tokens");
+  });
 });

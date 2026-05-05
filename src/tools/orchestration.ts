@@ -86,6 +86,8 @@ export interface ToolExecutionResult {
   readonly tool_input?: Record<string, unknown>;
   /** Tool-specific metadata for rich rendering */
   readonly metadata?: Record<string, unknown>;
+  /** Execution duration in milliseconds */
+  readonly durationMs?: number;
 }
 
 /**
@@ -186,12 +188,14 @@ async function executeSingleTool(
   }
 
   try {
+    const t0 = Date.now();
     const result = permissionManager
       ? await executeToolWithPermissions(
           registry, toolUse.name, toolUse.input, context,
           permissionManager, onPermissionAsk,
         )
       : await executeTool(registry, toolUse.name, toolUse.input, context);
+    const durationMs = Date.now() - t0;
 
     return {
       tool_use_id: toolUse.id,
@@ -200,6 +204,7 @@ async function executeSingleTool(
       tool_name: toolUse.name,
       tool_input: toolUse.input,
       metadata: result.metadata,
+      durationMs,
     };
   } catch (err) {
     return {
@@ -227,9 +232,9 @@ export async function executeAllToolBatches(
   context: ToolContext,
   permissionManager?: PermissionManager,
   onPermissionAsk?: OnPermissionAsk,
-): Promise<Array<{ tool_use_id: string; content: string; is_error?: boolean; tool_name?: string; tool_input?: Record<string, unknown>; metadata?: Record<string, unknown> }>> {
+): Promise<Array<{ tool_use_id: string; content: string; is_error?: boolean; tool_name?: string; tool_input?: Record<string, unknown>; metadata?: Record<string, unknown>; durationMs?: number }>> {
   const batches = partitionToolCalls(toolUseBlocks, registry);
-  const allResults: Array<{ tool_use_id: string; content: string; is_error?: boolean; tool_name?: string; tool_input?: Record<string, unknown>; metadata?: Record<string, unknown> }> = [];
+  const allResults: Array<{ tool_use_id: string; content: string; is_error?: boolean; tool_name?: string; tool_input?: Record<string, unknown>; metadata?: Record<string, unknown>; durationMs?: number }> = [];
 
   // Collect Agent batches separately — they'll run concurrently
   const agentBatches: ToolBatch[] = [];
@@ -260,6 +265,7 @@ export async function executeAllToolBatches(
         tool_name: r.tool_name,
         tool_input: r.tool_input,
         metadata: r.metadata,
+        durationMs: r.durationMs,
       });
     }
   }
@@ -279,6 +285,7 @@ export async function executeAllToolBatches(
           tool_name: r.tool_name,
           tool_input: r.tool_input,
           metadata: r.metadata,
+          durationMs: r.durationMs,
         });
       }
     } else {
@@ -299,6 +306,7 @@ export async function executeAllToolBatches(
             tool_name: r.tool_name,
             tool_input: r.tool_input,
             metadata: r.metadata,
+            durationMs: r.durationMs,
           });
         }
       }

@@ -26,9 +26,21 @@ export interface APIConfig {
   readonly requestTimeout?: number;
 }
 
+/** Token usage info from API message_start event */
+export interface APIUsage {
+  readonly input_tokens: number;
+  readonly output_tokens: number;
+  readonly cache_creation_input_tokens?: number;
+  readonly cache_read_input_tokens?: number;
+}
+
 export interface MessageStartEvent {
   readonly type: "message_start";
-  readonly message: { readonly id: string; readonly model?: string };
+  readonly message: {
+    readonly id: string;
+    readonly model?: string;
+    readonly usage?: APIUsage;
+  };
 }
 
 export interface ContentBlockStartEvent {

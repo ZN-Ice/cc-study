@@ -19,6 +19,7 @@ import { PermissionManager } from "../permissions/manager.js";
 import { getProjectSettingsPath } from "../permissions/config.js";
 import { PermissionConfirm } from "./PermissionConfirm.js";
 import { AgentProgress } from "./AgentProgress.js";
+import { StatusLine } from "./StatusLine.js";
 import { executeCommand } from "../commands/executor.js";
 import type { CommandContext } from "../commands/types.js";
 import { loadAllSkills } from "../skills/loader.js";
@@ -135,7 +136,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     // mcpRevision is not used directly but forces memo invalidation
   }), [apiKey, model, toolRegistry, mcpRevision]);
 
-  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents, injectTeammateResults } =
+  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents, injectTeammateResults, tokenUsage, totalCost, sessionDuration } =
     useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);
 
   // Keep a ref to sendMessage so polling can always call the latest version
@@ -280,6 +281,8 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
           toolUseCount={agent.toolUseCount}
           startTime={agent.startTime}
           recentTools={agent.recentTools}
+          tokenCount={agent.tokenCount}
+          model={agent.model}
         />
       ))}
 
@@ -312,6 +315,16 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       {exitState.waitingForSecondPress && !isLoading && (
         <Text color="yellow">  Press Esc or Ctrl+C again to exit</Text>
       )}
+
+      {/* Status line */}
+      <StatusLine
+        model={model}
+        tokenUsage={tokenUsage}
+        totalCost={totalCost}
+        executingTools={executingTools}
+        isLoading={isLoading}
+        sessionDuration={sessionDuration}
+      />
     </Box>
   );
 };

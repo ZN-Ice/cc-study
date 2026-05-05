@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Message, AssistantMessage, ToolUseBlock, ContentBlock } from "../messages.js";
 import { createUserMessage, createAssistantMessage } from "../messages.js";
-import { streamChat, type APIConfig, type StreamEvent } from "../services/api.js";
+import { streamChat, type APIConfig, type StreamEvent, type APIUsage } from "../services/api.js";
+import { addUsage, addAPIDuration, computeCost, getTotalCost, type TokenUsage } from "../cost-tracker.js";
 import type { ToolRegistry, ToolContext } from "../tools/index.js";
 import { executeAllToolBatches } from "../tools/orchestration.js";
 import type { PermissionManager } from "../permissions/manager.js";
@@ -32,6 +33,16 @@ interface UseStreamResponseReturn {
    * next user message sent via sendMessage().
    */
   readonly injectTeammateResults: () => Promise<number>;
+  /** Latest API call token usage (null if no API call yet) */
+  readonly tokenUsage: TokenUsage | null;
+  /** Total session cost in cents */
+  readonly totalCost: number;
+  /** Duration of the last API call in milliseconds */
+  readonly apiDurationMs: number | null;
+  /** Recent tool execution durations (from last batch) */
+  readonly toolDurations: readonly { name: string; durationMs: number }[];
+  /** Total session duration in milliseconds */
+  readonly sessionDuration: number;
 }
 
 /** A pending permission request entry in the queue */
@@ -95,7 +106,7 @@ export function extractToolPermissionDetails(
 async function collectStreamResponse(
   stream: AsyncGenerator<StreamEvent, void>,
   onText: (text: string) => void,
-): Promise<{ content: ContentBlock[]; stopReason: string | null }> {
+): Promise<{ content: ContentBlock[]; stopReason: string | null; usage: APIUsage | null }> {
   const blocks: ContentBlock[] = [];
   let currentTextIndex = -1;
   let textBlockCount = 0;
@@ -103,9 +114,16 @@ async function collectStreamResponse(
   let toolInputJson = "";
   let toolBlock: { id: string; name: string } | null = null;
   let stopReason: string | null = null;
+  let usage: APIUsage | null = null;
 
   for await (const event of stream) {
     switch (event.type) {
+      case "message_start": {
+        if (event.message.usage) {
+          usage = event.message.usage;
+        }
+        break;
+      }
       case "content_block_start": {
         const block = event.content_block;
         if (block.type === "text") {
@@ -164,7 +182,7 @@ async function collectStreamResponse(
     }
   }
 
-  return { content: blocks, stopReason };
+  return { content: blocks, stopReason, usage };
 }
 
 export function useStreamResponse(
@@ -180,6 +198,10 @@ export function useStreamResponse(
   const [error, setError] = useState<string | null>(null);
   const [executingTools, setExecutingTools] = useState<readonly string[]>([]);
   const [activeAgents, setActiveAgents] = useState<readonly AgentProgressEvent[]>([]);
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
+  const [apiDurationMs, setApiDurationMs] = useState<number | null>(null);
+  const [toolDurations, setToolDurations] = useState<readonly { name: string; durationMs: number }[]>([]);
+  const sessionStartTimeRef = useRef(Date.now());
   /**
    * Queue of pending permission requests from concurrent sub-agents.
    * State-based so React re-renders on every queue change, ensuring
@@ -326,12 +348,46 @@ export function useStreamResponse(
 
           let responseContent: ContentBlock[];
           let stopReason: string | null;
+          let apiUsage: APIUsage | null;
 
           try {
+            const t0 = Date.now();
             const stream = streamChat(conversationMessages, config, controller.signal);
             const result = await collectStreamResponse(stream, onText);
+            const elapsed = Date.now() - t0;
             responseContent = result.content;
             stopReason = result.stopReason;
+            apiUsage = result.usage;
+
+            setApiDurationMs(elapsed);
+            addAPIDuration(elapsed);
+
+            if (apiUsage) {
+              setTokenUsage({
+                inputTokens: apiUsage.input_tokens,
+                outputTokens: apiUsage.output_tokens,
+                cacheCreationInputTokens: apiUsage.cache_creation_input_tokens,
+                cacheReadInputTokens: apiUsage.cache_read_input_tokens,
+              });
+              const cost = computeCost({
+                inputTokens: apiUsage.input_tokens,
+                outputTokens: apiUsage.output_tokens,
+                cacheCreationInputTokens: apiUsage.cache_creation_input_tokens,
+                cacheReadInputTokens: apiUsage.cache_read_input_tokens,
+              });
+              addUsage({
+                tokens: {
+                  inputTokens: apiUsage.input_tokens,
+                  outputTokens: apiUsage.output_tokens,
+                  cacheCreationInputTokens: apiUsage.cache_creation_input_tokens,
+                  cacheReadInputTokens: apiUsage.cache_read_input_tokens,
+                },
+                costCents: cost,
+                durationMs: elapsed,
+                model: config.model,
+                timestamp: Date.now(),
+              });
+            }
           } catch (err) {
             // If aborted during stream, save partial response as cancelled
             if (err instanceof DOMException && err.name === "AbortError" && fullText) {
@@ -408,6 +464,7 @@ export function useStreamResponse(
               permissionManager, onPermissionAsk,
             );
 
+            const batchDurations: { name: string; durationMs: number }[] = [];
             for (const r of results) {
               toolResultBlocks.push({
                 type: "tool_result",
@@ -418,7 +475,11 @@ export function useStreamResponse(
                 tool_input: r.tool_input,
                 metadata: r.metadata,
               });
+              if (r.tool_name && r.durationMs !== undefined) {
+                batchDurations.push({ name: r.tool_name, durationMs: r.durationMs });
+              }
             }
+            setToolDurations(batchDurations);
 
             // Clear executing tools and active agents
             setExecutingTools([]);
@@ -509,5 +570,14 @@ export function useStreamResponse(
     }
   }, []);
 
-  return { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents, injectTeammateResults };
+  return {
+    isLoading, streamingText, sendMessage, cancel, error,
+    permissionRequest, respondToPermission, executingTools, activeAgents,
+    injectTeammateResults,
+    tokenUsage,
+    totalCost: getTotalCost(),
+    apiDurationMs,
+    toolDurations,
+    sessionDuration: Date.now() - sessionStartTimeRef.current,
+  };
 }
