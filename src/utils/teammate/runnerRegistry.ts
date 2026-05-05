@@ -6,7 +6,7 @@
 
 import { writeToMailbox, createIdleNotification, TEAM_LEAD_NAME } from "../teammateMailbox.js";
 import { readTeamFile, writeTeamFileSync } from "../teamHelper.js";
-import { startHeartbeat, stopHeartbeat, detectStaleTeammates } from "./heartbeat.js";
+import { startHeartbeat, stopHeartbeat } from "./heartbeat.js";
 
 /** Maximum length for the summary field in an idle notification. */
 const SUMMARY_MAX_LENGTH = 10_000;
