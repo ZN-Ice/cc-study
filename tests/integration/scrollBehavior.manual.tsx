@@ -50,7 +50,7 @@ console.log(`
 `);
 
 // Test the ScrollBox in isolation
-import React, { createRef, useState } from "react";
+import React, { createRef } from "react";
 import { render } from "ink-testing-library";
 import { Text } from "ink";
 import { ScrollBox } from "../../src/components/ScrollBox.js";

@@ -13,6 +13,7 @@
 // SGR mouse event: ESC [ < button ; col ; row M/m
 // Use \x1b directly for reliable matching (String.fromCharCode may produce
 // a different internal representation on some platforms)
+// eslint-disable-next-line no-control-regex
 const SGR_MOUSE_RE = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])$/;
 
 export interface SGRMouseEvent {
@@ -81,6 +82,7 @@ export function parseSGRMouseAll(
 ): NonNullable<MouseEventResult>[] {
   const results: NonNullable<MouseEventResult>[] = [];
   // Strip anchors for multi-event matching: find all SGR sequences in input
+  // eslint-disable-next-line no-control-regex
   const multiRe = /\x1b\[<(\d+);(\d+);(\d+)([Mm])/g;
   let match: RegExpExecArray | null;
   while ((match = multiRe.exec(input)) !== null) {
