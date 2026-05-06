@@ -128,6 +128,10 @@ export interface AgentProgressEvent {
   readonly startTime: number;
   /** Last N tool invocations as short human-readable strings (e.g. "Read: file.ts") */
   readonly recentTools: readonly string[];
+  /** Token count for this agent (if tracked) */
+  readonly tokenCount?: number;
+  /** Model being used by this agent */
+  readonly model?: string;
 }
 
 /** Callback type for agent progress updates */

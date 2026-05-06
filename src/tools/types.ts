@@ -27,6 +27,8 @@ export interface ToolResult {
   error?: boolean;
   /** Tool-specific metadata for rich UI rendering */
   metadata?: Record<string, unknown>;
+  /** Execution duration in milliseconds */
+  durationMs?: number;
 }
 
 // ──────────────────────────────────────────────

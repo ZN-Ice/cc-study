@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
-import { Box, Text, useInput, useApp } from "ink";
+import { Box, Text, useInput, useApp, useStdin } from "ink";
 import type { Message } from "../messages.js";
 import { createSystemMessage } from "../messages.js";
 import { PromptInput } from "./PromptInput.js";
@@ -15,10 +15,12 @@ import type { TwoPressExitState } from "../utils/twoPressExit.js";
 import { createDefaultRegistry, loadAndRegisterMcpTools } from "../tools/index.js";
 import type { ToolContext } from "../tools/types.js";
 import type { McpLoadResult } from "../tools/index.js";
+import type { ScrollBoxHandle } from "./ScrollBox.js";
 import { PermissionManager } from "../permissions/manager.js";
 import { getProjectSettingsPath } from "../permissions/config.js";
 import { PermissionConfirm } from "./PermissionConfirm.js";
 import { AgentProgress } from "./AgentProgress.js";
+import { StatusLine } from "./StatusLine.js";
 import { executeCommand } from "../commands/executor.js";
 import type { CommandContext } from "../commands/types.js";
 import { loadAllSkills } from "../skills/loader.js";
@@ -26,6 +28,12 @@ import { initBundledSkills, getBundledSkills } from "../skills/index.js";
 import { setSkillLookup } from "../tools/SkillTool/index.js";
 import type { SkillCommand } from "../skills/types.js";
 import { cancelAllRunners } from "../utils/teammate/runnerRegistry.js";
+import { reset as resetCostTracker } from "../cost-tracker.js";
+import { createDebug } from "../utils/debug.js";
+import { parseSGRMouseAll } from "../utils/mouse.js";
+
+const debugScroll = createDebug("scroll:keys");
+const debugMouse = createDebug("scroll:mouse");
 
 interface AppProps {
   readonly model: string;
@@ -35,12 +43,16 @@ interface AppProps {
 
 export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
   const { exit } = useApp();
+  const scrollRef = useRef<ScrollBoxHandle>(null);
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<readonly Message[]>([]);
   const [exitState, setExitState] = useState<TwoPressExitState>({
     waitingForSecondPress: false,
   });
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Mouse event handling via Ink's internal event emitter
+  const { internal_eventEmitter } = useStdin();
 
   // Create tool registry once (synchronous — built-in tools)
   const toolRegistry = useMemo(() => createDefaultRegistry(), []);
@@ -135,7 +147,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
     // mcpRevision is not used directly but forces memo invalidation
   }), [apiKey, model, toolRegistry, mcpRevision]);
 
-  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents, injectTeammateResults } =
+  const { isLoading, streamingText, sendMessage, cancel, error, permissionRequest, respondToPermission, executingTools, activeAgents, injectTeammateResults, tokenUsage, totalCost, sessionDuration, resetSessionMetrics } =
     useStreamResponse(messages, setMessages, apiConfig, toolRegistry, toolContext, permissionManager);
 
   // Keep a ref to sendMessage so polling can always call the latest version
@@ -179,6 +191,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
 
   // Global key handling
   useInput((_input, key) => {
+    debugScroll(`input: ${JSON.stringify({ input: _input, key })}`);
     // Ctrl+C: cancel streaming (when loading) or quit (when idle)
     if (_input === "c" && key.ctrl) {
       if (isLoading) {
@@ -198,7 +211,141 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       }
       return;
     }
+
+    // Scroll keys (only when not loading)
+    if (!isLoading) {
+      const vpHeight = scrollRef.current?.getViewportHeight() ?? 20;
+      if (key.upArrow) {
+        debugScroll(`UP arrow pressed, scrollBy(-3)`);
+        scrollRef.current?.scrollBy(-3);
+        return;
+      }
+      if (key.downArrow) {
+        debugScroll(`DOWN arrow pressed, scrollBy(3)`);
+        scrollRef.current?.scrollBy(3);
+        return;
+      }
+      if (key.pageUp) {
+        debugScroll(`PageUp pressed, scrollBy(-${Math.ceil(vpHeight / 2)})`);
+        scrollRef.current?.scrollBy(-Math.ceil(vpHeight / 2));
+        return;
+      }
+      if (key.pageDown) {
+        debugScroll(`PageDown pressed, scrollBy(${Math.ceil(vpHeight / 2)})`);
+        scrollRef.current?.scrollBy(Math.ceil(vpHeight / 2));
+        return;
+      }
+    }
   });
+
+  // ── SGR mouse tracking ──────────────────────────────────────────────
+  // Modes used:
+  //   1000h = basic mouse tracking (press/release)
+  //   1002h = button-event tracking (press/release + drag motion)
+  //   1006h = SGR extended coordinates (handles terminals > 223 cols/rows)
+  // NOT using 1003h (any-event) which would intercept ALL mouse motion
+  // and break native text selection.
+  useEffect(() => {
+    const enableSeq = "\x1b[?1000h\x1b[?1002h\x1b[?1006h";
+    const disableSeq = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
+    process.stdout.write(enableSeq);
+
+    return () => {
+      process.stdout.write(disableSeq);
+    };
+  }, []);
+
+  // Drag state for scrollbar dragging
+  const dragStateRef = useRef({
+    active: false,
+    thumbStartRow: 0,
+    scrollStart: 0,
+  });
+
+  // Listen to raw stdin for SGR mouse events.
+  // We listen directly on process.stdin to avoid conflicts with Ink's
+  // internal_eventEmitter (which may buffer or transform data).
+  useEffect(() => {
+    const handleStdinData = (chunk: Buffer) => {
+      const str = chunk.toString("utf-8");
+      debugMouse(`stdin chunk: len=${chunk.length} hex=${chunk.toString("hex")}`);
+
+      const events = parseSGRMouseAll(str);
+      if (events.length === 0 && str.includes("\x1b[<")) {
+        debugMouse(`UNPARSED: ${JSON.stringify(str)}`);
+      }
+      debugMouse(`parsed ${events.length} events`);
+      for (const mouse of events) {
+        if (mouse.type === "wheel") {
+          const delta = mouse.direction === "up" ? -3 : 3;
+          debugMouse(`wheel ${mouse.direction} -> scrollBy(${delta})`);
+          scrollRef.current?.scrollBy(delta);
+          continue;
+        }
+
+        if (mouse.type === "click") {
+          const handle = scrollRef.current;
+          if (!handle) continue;
+
+          const vpHeight = handle.getViewportHeight();
+          const scrollHeight = handle.getScrollHeight();
+          const termCols = process.stdout.columns ?? 80;
+          debugMouse(`click col=${mouse.event.col} row=${mouse.event.row} vpH=${vpHeight} scrollH=${scrollHeight} cols=${termCols}`);
+          if (scrollHeight <= vpHeight) continue;
+
+          const clickCol = mouse.event.col;
+          if (clickCol < termCols - 1) continue;
+
+          const vpTop = handle.getViewportTop();
+          const clickRow = mouse.event.row;
+          if (clickRow < vpTop + 1 || clickRow > vpTop + vpHeight) continue;
+
+          const maxScroll = scrollHeight - vpHeight;
+          const viewportClickRow = clickRow - vpTop;
+          const targetScroll = Math.round((viewportClickRow / vpHeight) * maxScroll);
+          debugMouse(`scrollbar click row=${viewportClickRow} -> scrollTo(${targetScroll})`);
+          handle.scrollTo(targetScroll);
+
+          dragStateRef.current = {
+            active: true,
+            thumbStartRow: viewportClickRow,
+            scrollStart: targetScroll,
+          };
+          continue;
+        }
+
+        if (mouse.type === "drag" && dragStateRef.current.active) {
+          const handle = scrollRef.current;
+          if (!handle) continue;
+
+          const vpHeight = handle.getViewportHeight();
+          const scrollHeight = handle.getScrollHeight();
+          if (scrollHeight <= vpHeight) continue;
+
+          const maxScroll = scrollHeight - vpHeight;
+          const vpTop = handle.getViewportTop();
+          const currentRow = mouse.event.row - vpTop;
+          const rowDelta = currentRow - dragStateRef.current.thumbStartRow;
+          const scrollDelta = Math.round((rowDelta / vpHeight) * maxScroll);
+          const newScroll = dragStateRef.current.scrollStart + scrollDelta;
+          debugMouse(`drag row=${currentRow} -> scrollTo(${newScroll})`);
+          handle.scrollTo(newScroll);
+          continue;
+        }
+
+        if (mouse.type === "release") {
+          debugMouse(`release`);
+          dragStateRef.current.active = false;
+          continue;
+        }
+      }
+    };
+
+    internal_eventEmitter.on("input", handleStdinData);
+    return () => {
+      internal_eventEmitter.removeListener("input", handleStdinData);
+    };
+  }, [internal_eventEmitter]);
 
   const executeSlashCommand = useCallback(
     async (input: string) => {
@@ -206,11 +353,16 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
         abortSignal: new AbortController().signal,
         workingDirectory: process.cwd(),
         canUseTool: (toolName: string) => toolRegistry.has(toolName),
+        setMessages: (updater) => setMessages(updater),
+        resetSession: () => {
+          resetCostTracker();
+          resetSessionMetrics();
+        },
       };
 
       return executeCommand(input, commandContext, loadedSkills);
     },
-    [toolRegistry, loadedSkills],
+    [toolRegistry, loadedSkills, setMessages, resetSessionMetrics],
   );
 
   const handleSubmit = useCallback(
@@ -244,7 +396,7 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
   }, []);
 
   return (
-    <Box flexDirection="column" padding={1}>
+    <Box flexDirection="column" padding={1} height={process.stdout.rows ?? 48}>
       {/* Header */}
       <Box marginBottom={1}>
         <Text color="green" bold>
@@ -254,42 +406,48 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
         {debug && <Text color="yellow"> | DEBUG</Text>}
       </Box>
 
-      {/* Message area */}
-      <MessageList messages={messages} streamingText={streamingText} />
+      {/* Message area — agent progress and permission dialog are inside the scroll area */}
+      <MessageList
+        messages={messages}
+        streamingText={streamingText}
+        scrollRef={scrollRef}
+        agentProgress={
+          <>
+            {isLoading && activeAgents.length === 0 && executingTools.length === 0 && !permissionRequest && (
+              <>
+                {streamingText ? <Spinner mode="responding" /> : <Spinner mode="thinking" />}
+              </>
+            )}
+            {activeAgents.map((agent) => (
+              <AgentProgress
+                key={agent.agentId}
+                agentType={agent.agentType}
+                description={agent.description}
+                toolUseCount={agent.toolUseCount}
+                startTime={agent.startTime}
+                recentTools={agent.recentTools}
+                tokenCount={agent.tokenCount}
+                model={agent.model}
+              />
+            ))}
+          </>
+        }
+        permissionDialog={
+          permissionRequest ? (
+            <Box marginTop={1}>
+              <PermissionConfirm
+                request={permissionRequest}
+                onRespond={respondToPermission}
+              />
+            </Box>
+          ) : undefined
+        }
+      />
 
       {/* Error display */}
       {error && (
         <Box marginBottom={1}>
           <Text color="red">Error: {error}</Text>
-        </Box>
-      )}
-
-      {/* Loading spinner (hidden when agents are running) */}
-      {isLoading && activeAgents.length === 0 && executingTools.length === 0 && !permissionRequest && (
-        <>
-          {streamingText ? <Spinner mode="responding" /> : <Spinner mode="thinking" />}
-        </>
-      )}
-
-      {/* Agent progress display (one per running sub-agent) */}
-      {activeAgents.map((agent) => (
-        <AgentProgress
-          key={agent.agentId}
-          agentType={agent.agentType}
-          description={agent.description}
-          toolUseCount={agent.toolUseCount}
-          startTime={agent.startTime}
-          recentTools={agent.recentTools}
-        />
-      ))}
-
-      {/* Permission confirmation dialog */}
-      {permissionRequest && (
-        <Box marginTop={1}>
-          <PermissionConfirm
-            request={permissionRequest}
-            onRespond={respondToPermission}
-          />
         </Box>
       )}
 
@@ -312,6 +470,16 @@ export const App: React.FC<AppProps> = ({ model, debug, apiKey }) => {
       {exitState.waitingForSecondPress && !isLoading && (
         <Text color="yellow">  Press Esc or Ctrl+C again to exit</Text>
       )}
+
+      {/* Status line */}
+      <StatusLine
+        model={model}
+        tokenUsage={tokenUsage}
+        totalCost={totalCost}
+        executingTools={executingTools}
+        isLoading={isLoading}
+        sessionDuration={sessionDuration}
+      />
     </Box>
   );
 };

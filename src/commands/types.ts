@@ -5,6 +5,8 @@
  * Simplified version focusing on core functionality.
  */
 
+import type { Message } from '../messages.js'
+
 // ============================================================================
 // Command Result Types
 // ============================================================================
@@ -23,18 +25,14 @@ export interface CommandContext {
   abortSignal: AbortSignal
   workingDirectory: string
   canUseTool?: (toolName: string) => boolean
-  setMessages?: (updater: (prev: Message[]) => Message[]) => void
+  setMessages?: (updater: (prev: readonly Message[]) => readonly Message[]) => void
+  /** Reset session state: clear cost tracking, reset session timer. */
+  resetSession?: () => void
   resume?: (
     sessionId: string,
     log: unknown,
     entrypoint: ResumeEntrypoint,
   ) => Promise<void>
-}
-
-export interface Message {
-  id: string
-  role: 'user' | 'assistant' | 'system'
-  content: unknown[]
 }
 
 export type ResumeEntrypoint =

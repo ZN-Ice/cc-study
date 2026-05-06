@@ -1378,11 +1378,11 @@
     "source_ref": "free-code/src/components/StatusLine.tsx",
     "task_desc": "研读 StatusLine 组件：顶部状态栏的字段结构（model/cost/context_window/rate_limits）、buildStatusLineCommandInput 构建逻辑、statusLineShouldDisplay 显示条件",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 StatusLine 如何展示 token 使用量、API 耗时、成本估算等实时指标"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "已研读 StatusLine 架构（324行），理解 300ms 防抖更新、外部命令驱动、Ansi 渲染模式。笔记: docs/notes/phase10-statusline.md"
   },
   {
     "task_id": "P10002",
@@ -1392,11 +1392,11 @@
     "source_ref": "free-code/src/cost-tracker.ts,free-code/src/utils/tokens.ts",
     "task_desc": "研读 Token/Cost 追踪系统：getTotalInputTokens/getTotalOutputTokens、getTotalCost/getTotalDuration、calculateContextPercentages 上下文百分比、getCurrentUsage 当前使用量计算",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 token 计数、成本计算、上下文百分比的核心算法"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "已研读 cost-tracker 模块级单例模式、按模型分组累计、会话持久化机制。笔记: docs/notes/phase10-cost-tracking.md"
   },
   {
     "task_id": "P10003",
@@ -1406,11 +1406,11 @@
     "source_ref": "free-code/src/components/VirtualMessageList.tsx,free-code/src/components/ScrollKeybindingHandler.tsx",
     "task_desc": "研读虚拟滚动与滚动处理：useVirtualScroll 窗口化渲染、ScrollBoxHandle 滚动控制、ScrollKeybindingHandler 键盘滚动（g/G/PgUp/PgDn）、bounce detection 弹跳检测",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "理解 Ink 中虚拟滚动的实现和滚动期间的输入处理"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "已研读 VirtualMessageList (1082行) 虚拟滚动 + ScrollKeybindingHandler (1012行) 键盘处理。决策：cc-study 使用分页方案（~50行）替代虚拟滚动。笔记: docs/notes/phase10-virtual-scroll.md"
   },
   {
     "task_id": "P10004",
@@ -1420,11 +1420,11 @@
     "source_ref": "free-code/src/components/StatusLine.tsx,free-code/src/components/VirtualMessageList.tsx",
     "task_desc": "编写 Phase 10 UI 优化设计文档：StatusLine 组件、Token/Cost 显示、滚动支持、执行时间显示、Spinner 增强",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "输出到 docs/design/phase10-ui-optimization.md，含架构设计、接口定义、测试规划"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "输出到 docs/design/phase10-ui-optimization.md，含系统架构图、组件 API 设计、数据流、4 项设计决策、测试规划"
   },
   {
     "task_id": "P10005",
@@ -1434,11 +1434,11 @@
     "source_ref": "free-code/src/components/StatusLine.tsx",
     "task_desc": "实现 StatusLine 组件：model 名称、workingDirectory、token 使用量（input/output/百分比）、API 耗时、成本估算、rate limits 显示",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "文件：src/components/StatusLine.tsx。集成到 App.tsx 顶部，支持 show/hide 切换"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "实现 src/components/StatusLine.tsx（122行）：4 种状态渲染（空闲/有tokens/执行工具/思考中），集成到 App.tsx 底部。10 个测试用例全部通过"
   },
   {
     "task_id": "P10006",
@@ -1448,11 +1448,11 @@
     "source_ref": "free-code/src/components/AgentProgressLine.tsx,free-code/src/components/shell/ShellTimeDisplay.tsx",
     "task_desc": "实现执行时间显示：API 调用耗时（从 streamChat 开始计时）、工具执行耗时（executeAllToolBatches 计时）、turn 耗时显示在 StatusLine 或 AgentProgress 中",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "扩展 useStreamResponse 返回执行耗时，在 Spinner/StatusLine 中显示 elapsed time"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "在 orchestration.ts 中为每个工具执行添加 t0 计时，durationMs 通过 ToolExecutionResult 传播到 useStreamResponse → StatusLine。apiDurationMs 和 toolDurations 暴露给消费者"
   },
   {
     "task_id": "P10007",
@@ -1462,11 +1462,11 @@
     "source_ref": "free-code/src/components/VirtualMessageList.tsx",
     "task_desc": "实现滚动支持：MessageList 滚动容器、useInput 处理上下滚动键（↑/↓/PageUp/PageDown）、滚动时暂停自动跟随新消息、滚动到底部快捷键",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "文件：src/components/MessageList.tsx 重构，支持滚动容器和键盘导航"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "采用分页方案（非虚拟滚动）：pageSize 默认 20，Show All 切换，流式输出中自动跟随最新消息。7 个测试用例全部通过"
   },
   {
     "task_id": "P10008",
@@ -1476,11 +1476,11 @@
     "source_ref": "free-code/src/components/AgentProgressLine.tsx",
     "task_desc": "增强 AgentProgress 显示：在现有 elapsed time 基础上增加 token count、model name、turn duration 等信息，与 free-code 的 AgentProgressLine 对齐",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "扩展 AgentProgressProps，增加 tokenCount、model、turnStartTime 等字段"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "AgentProgress 新增 tokenCount 和 model 可选 props，AgentProgressEvent 类型同步扩展。App.tsx 传递新字段。10 个测试（4 原有 + 6 新增）全部通过"
   },
   {
     "task_id": "P10009",
@@ -1490,11 +1490,11 @@
     "source_ref": "free-code/src/utils/format.ts",
     "task_desc": "实现 format.ts 工具函数：formatDuration（ms → \"1m 30s\"）、formatNumber（数字 → \"1.3k\"）、formatCost（USD 格式化）等格式化工具",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "文件：src/utils/format.ts。StatusLine 和 AgentProgress 需要这些格式化函数"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "TDD 实现 src/utils/format.ts：formatDuration(ms→Xh Xm Xs)、formatNumber(toLocaleString千分位)、formatCost(cents→$X.XX)。24 个测试全部通过"
   },
   {
     "task_id": "P10010",
@@ -1504,11 +1504,11 @@
     "source_ref": "free-code/src/cost-tracker.ts",
     "task_desc": "实现 cost-tracker.ts 成本追踪：getTotalInputTokens/getTotalOutputTokens 累计计数、getTotalCost/getTotalDuration 汇总计算、resetCostState 测试重置",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "文件：src/cost-tracker.ts。API 响应回来后更新计数，StatusLine 消费这些数据"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "实现 src/cost-tracker.ts（120行）：模块级单例、addUsage 累加、computeCost 定价（$3/M in + $15/M out）、reset 测试辅助。12 个测试全部通过"
   },
   {
     "task_id": "P10011",
@@ -1518,11 +1518,11 @@
     "source_ref": null,
     "task_desc": "编写 UI 组件测试：StatusLine 字段渲染、formatDuration/formatNumber 格式化、MessageList 滚动行为、AgentProgress elapsed time 更新",
     "executor": "Claude Code",
-    "status": "待执行",
+    "status": "已完成",
     "create_time": "2026-04-26 16:00:00",
-    "finish_time": null,
-    "check_result": null,
-    "remark": "覆盖率目标：70%+。Mock Ink 组件，测试逻辑不依赖终端渲染"
+    "finish_time": "2026-05-05 17:00:00",
+    "check_result": "通过",
+    "remark": "新增 35 个测试用例：cost-tracker(12) + statusLine(10) + messageList(7) + agentProgress(+6)。全量 1009 个测试通过，typecheck 通过，lint 零警告，build 通过"
   },
   {
     "task_id": "P6009",
@@ -1565,5 +1565,33 @@
     "finish_time": "2026-04-26 22:55:00",
     "check_result": "通过",
     "remark": "实现层级命令支持：添加SubCommand类型定义，CommandSelector支持子命令视图，/memory命令添加subCommands定义"
+  },
+  {
+    "task_id": "P10012",
+    "task_type": "功能开发",
+    "phase": "Phase 10",
+    "module": "cmd",
+    "source_ref": null,
+    "task_desc": "实现 /new (别名 /clear, /reset) 会话重置命令：清除所有消息历史、重置成本追踪和会话计时器、扩展 CommandContext 添加 resetSession 回调、修复 App.tsx 未向命令上下文传递 setMessages 的缺陷",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-05-05 17:00:00",
+    "finish_time": "2026-05-05 17:45:00",
+    "check_result": "通过",
+    "remark": "实现 src/commands/builtins/clear.ts（/new + 别名 /clear/ /reset）、扩展 CommandContext.resetSession、useStreamResponse 新增 resetSessionMetrics、修复 App.tsx 传递 setMessages 到命令上下文。7 个测试全部通过，全量 1016 个测试通过。typecheck/lint/build 通过"
+  },
+  {
+    "task_id": "P10013",
+    "task_type": "功能开发",
+    "phase": "Phase 10",
+    "module": "ui",
+    "source_ref": "free-code/src/ink/components/ScrollBox.tsx",
+    "task_desc": "实现 ScrollBox 视口管理系统：引入 sticky scroll 机制解决流式输出时滚动弹跳 bug，包含 ScrollBox 组件（viewport culling + isSticky 自动跟随）、MessageList 重构（移除 pageSize 分页）、App.tsx 键盘滚动处理（PgUp/PgDn/↑/↓）",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-05-05 19:00:00",
+    "finish_time": "2026-05-05 20:15:00",
+    "check_result": "通过",
+    "remark": "实现 src/components/ScrollBox.tsx（138行）：React.forwardRef + ScrollBoxHandle 命令式 API、scrollTop/useState + isSticky/useRef、viewport culling（每个子元素估算1行）、同步 sticky 自动跟随。重构 MessageList.tsx（移除 pageSize/showAll 分页）。App.tsx 新增 ↑↓PgUpPgDn Home End 键盘滚动。10 个 ScrollBox 测试 + 6 个 MessageList 测试。全量 1025 个测试通过。typecheck/lint/build 通过。设计文档：docs/design/phase10-scrollbox.md，源码笔记：docs/notes/phase10-scrollbox.md"
   }
 ]
