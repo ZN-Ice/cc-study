@@ -1579,5 +1579,19 @@
     "finish_time": "2026-05-05 17:45:00",
     "check_result": "通过",
     "remark": "实现 src/commands/builtins/clear.ts（/new + 别名 /clear/ /reset）、扩展 CommandContext.resetSession、useStreamResponse 新增 resetSessionMetrics、修复 App.tsx 传递 setMessages 到命令上下文。7 个测试全部通过，全量 1016 个测试通过。typecheck/lint/build 通过"
+  },
+  {
+    "task_id": "P10013",
+    "task_type": "功能开发",
+    "phase": "Phase 10",
+    "module": "ui",
+    "source_ref": "free-code/src/ink/components/ScrollBox.tsx",
+    "task_desc": "实现 ScrollBox 视口管理系统：引入 sticky scroll 机制解决流式输出时滚动弹跳 bug，包含 ScrollBox 组件（viewport culling + isSticky 自动跟随）、MessageList 重构（移除 pageSize 分页）、App.tsx 键盘滚动处理（PgUp/PgDn/↑/↓）",
+    "executor": "Claude Code",
+    "status": "已完成",
+    "create_time": "2026-05-05 19:00:00",
+    "finish_time": "2026-05-05 20:15:00",
+    "check_result": "通过",
+    "remark": "实现 src/components/ScrollBox.tsx（138行）：React.forwardRef + ScrollBoxHandle 命令式 API、scrollTop/useState + isSticky/useRef、viewport culling（每个子元素估算1行）、同步 sticky 自动跟随。重构 MessageList.tsx（移除 pageSize/showAll 分页）。App.tsx 新增 ↑↓PgUpPgDn Home End 键盘滚动。10 个 ScrollBox 测试 + 6 个 MessageList 测试。全量 1025 个测试通过。typecheck/lint/build 通过。设计文档：docs/design/phase10-scrollbox.md，源码笔记：docs/notes/phase10-scrollbox.md"
   }
 ]

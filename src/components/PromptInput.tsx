@@ -247,6 +247,10 @@ export const PromptInput: React.FC<PromptInputProps> = ({
       return;
     }
 
+    // Skip SGR mouse sequences — parseKeypress strips \x1b, leaving [<
+    // (e.g. [<0;10;5M for click, [<64;10;5M for wheel)
+    if (input && input.startsWith("[<")) return;
+
     if (input && !key.ctrl && !key.meta) {
       const newValue = value.slice(0, cursorPos) + input + value.slice(cursorPos);
       handleChange(newValue, cursorOffset);

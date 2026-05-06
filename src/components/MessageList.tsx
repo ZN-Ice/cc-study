@@ -1,42 +1,44 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Box, Text } from "ink";
 import type { Message } from "../messages.js";
 import { MessageView } from "./MessageView.js";
+import { ScrollBox, computeViewportHeight, estimateLines } from "./ScrollBox.js";
+import type { ScrollBoxHandle } from "./ScrollBox.js";
 
 interface MessageListProps {
   readonly messages: readonly Message[];
   readonly streamingText: string | null;
-  readonly pageSize?: number;
+  readonly scrollRef: React.Ref<ScrollBoxHandle>;
+  /** Sub-agent progress entries rendered inside the scroll area */
+  readonly agentProgress?: React.ReactNode;
+  /** Permission confirmation dialog rendered inside the scroll area */
+  readonly permissionDialog?: React.ReactNode;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   streamingText,
-  pageSize = 20,
+  scrollRef,
+  agentProgress,
+  permissionDialog,
 }) => {
-  const [showAll, setShowAll] = useState(false);
-  const totalCount = messages.length;
   const isStreaming = streamingText !== null;
 
-  useEffect(() => {
-    if (isStreaming) {
-      setShowAll(false);
-    }
-  }, [isStreaming]);
+  // Estimate total visual rows for sticky scroll tracking
+  const perMessageLines = messages.map((msg) => estimateLines(msg));
+  const streamingLines = isStreaming ? 3 : 0;
+  const totalVisualRows = perMessageLines.reduce((sum, h) => sum + h, 0) + streamingLines;
 
-  let visibleMessages: readonly Message[];
-  let hiddenCount = 0;
-
-  if (totalCount <= pageSize || showAll) {
-    visibleMessages = messages;
-  } else {
-    visibleMessages = messages.slice(-pageSize);
-    hiddenCount = totalCount - pageSize;
-  }
+  const viewportHeight = computeViewportHeight();
 
   return (
-    <Box flexDirection="column">
-      {visibleMessages.map((msg) => (
+    <ScrollBox
+      ref={scrollRef}
+      totalRows={totalVisualRows}
+      stickyScroll={isStreaming}
+      viewportHeight={viewportHeight}
+    >
+      {messages.map((msg) => (
         <MessageView key={msg.id} message={msg} />
       ))}
       {isStreaming && (
@@ -45,19 +47,8 @@ export const MessageList: React.FC<MessageListProps> = ({
           <Text>{streamingText}</Text>
         </Box>
       )}
-      {totalCount > pageSize && !isStreaming && (
-        <Box marginTop={1}>
-          {showAll ? (
-            <Text dimColor>
-              ─── showing all {totalCount} messages ───
-            </Text>
-          ) : (
-            <Text dimColor>
-              ─── {hiddenCount} more messages ─── [Show All] ───
-            </Text>
-          )}
-        </Box>
-      )}
-    </Box>
+      {agentProgress}
+      {permissionDialog}
+    </ScrollBox>
   );
 };

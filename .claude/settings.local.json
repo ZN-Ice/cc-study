@@ -46,7 +46,18 @@
       "Bash(grep -v \"^$\")",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(git *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(npx tsx *)",
+      "Bash(> /tmp/cc-study-debug.log)",
+      "mcp__web-reader__webReader",
+      "WebSearch",
+      "mcp__zread__get_repo_structure",
+      "WebFetch(domain:deepwiki.com)",
+      "mcp__zread__read_file",
+      "Bash(npm view *)",
+      "Bash(echo \"EXIT_CODE=$?\")",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" pnpm test tests/unit/utils/mouse.test.ts)"
     ]
   }
 }

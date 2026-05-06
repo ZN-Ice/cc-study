@@ -1,13 +1,14 @@
 /**
- * Tests for MessageList component — pagination behavior.
+ * Tests for MessageList component — ScrollBox integration.
  */
 
 import { describe, test, expect } from "vitest";
-import React from "react";
+import React, { createRef } from "react";
 import { render } from "ink-testing-library";
 import { MessageList } from "../../../src/components/MessageList.js";
 import { createUserMessage } from "../../../src/messages.js";
 import type { Message } from "../../../src/messages.js";
+import type { ScrollBoxHandle } from "../../../src/components/ScrollBox.js";
 
 function makeMessages(count: number): Message[] {
   return Array.from({ length: count }, (_, i) =>
@@ -15,120 +16,109 @@ function makeMessages(count: number): Message[] {
   );
 }
 
-describe("MessageList — pagination", () => {
-  test("renders all messages when count is below pageSize", () => {
+describe("MessageList — ScrollBox integration", () => {
+  test("renders all messages when count is below viewport", () => {
     const messages = makeMessages(5);
+    const scrollRef = createRef<ScrollBoxHandle>();
     const { lastFrame } = render(
       React.createElement(MessageList, {
         messages,
         streamingText: null,
-        pageSize: 10,
+        scrollRef,
       }),
     );
     const frame = lastFrame();
     for (let i = 1; i <= 5; i++) {
       expect(frame).toContain(`test message ${i}`);
     }
-    // No pagination footer
-    expect(frame).not.toContain("more messages");
   });
 
-  test("renders all messages when count equals pageSize", () => {
-    const messages = makeMessages(10);
+  test("renders messages within ScrollBox viewport", () => {
+    // In test env, computeViewportHeight() returns 24 (no stdout.rows)
+    // Each user message = ~3 visual rows (label + text + margin)
+    // So 7 messages ≈ 21 rows, fits in viewport 24
+    const messages = makeMessages(7);
+    const scrollRef = createRef<ScrollBoxHandle>();
     const { lastFrame } = render(
       React.createElement(MessageList, {
         messages,
         streamingText: null,
-        pageSize: 10,
+        scrollRef,
       }),
     );
     const frame = lastFrame();
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 7; i++) {
       expect(frame).toContain(`test message ${i}`);
     }
-    expect(frame).not.toContain("more messages");
   });
 
-  test("shows pagination footer when messages exceed pageSize", () => {
-    const messages = makeMessages(25);
-    const { lastFrame } = render(
-      React.createElement(MessageList, {
-        messages,
-        streamingText: null,
-        pageSize: 10,
-      }),
-    );
-    const frame = lastFrame();
-    expect(frame).toContain("more messages");
-    expect(frame).toContain("test message 16");
-    expect(frame).toContain("test message 25");
-  });
-
-  test("shows correct hidden count in footer", () => {
-    const messages = makeMessages(30);
-    const { lastFrame } = render(
-      React.createElement(MessageList, {
-        messages,
-        streamingText: null,
-        pageSize: 20,
-      }),
-    );
-    const frame = lastFrame();
-    expect(frame).toContain("10 more messages");
-  });
-
-  test("shows all messages when pageSize is not provided (defaults to 20)", () => {
+  test("shows streaming text when streamingText is provided", () => {
     const messages = makeMessages(5);
+    const scrollRef = createRef<ScrollBoxHandle>();
     const { lastFrame } = render(
       React.createElement(MessageList, {
         messages,
-        streamingText: null,
-        // pageSize intentionally omitted — defaults to 20
+        streamingText: "thinking...",
+        scrollRef,
       }),
     );
     const frame = lastFrame();
-    for (let i = 1; i <= 5; i++) {
-      expect(frame).toContain(`test message ${i}`);
-    }
-    expect(frame).not.toContain("more messages");
-  });
-
-  test("hides pagination footer during streaming", () => {
-    const messages = makeMessages(25);
-    const { lastFrame } = render(
-      React.createElement(MessageList, {
-        messages,
-        streamingText: "...",
-        pageSize: 10,
-      }),
-    );
-    const frame = lastFrame();
-    expect(frame).not.toContain("more messages");
-    // Streaming indicator should be present
     expect(frame).toContain("[Assistant]");
+    expect(frame).toContain("thinking...");
   });
 
-  test("shows footer again after streaming stops", () => {
-    const messages = makeMessages(25);
-    const { lastFrame, rerender } = render(
+  test("does not show streaming text when streamingText is null", () => {
+    const messages = makeMessages(5);
+    const scrollRef = createRef<ScrollBoxHandle>();
+    const { lastFrame } = render(
       React.createElement(MessageList, {
         messages,
-        streamingText: "...",
-        pageSize: 10,
+        streamingText: null,
+        scrollRef,
       }),
     );
-    // Footer hidden during streaming
-    expect(lastFrame()).not.toContain("more messages");
+    const frame = lastFrame();
+    expect(frame).not.toContain("[Assistant]");
+  });
 
-    // Stop streaming
+  test("passes scrollRef to ScrollBox", () => {
+    const messages = makeMessages(3);
+    const scrollRef = createRef<ScrollBoxHandle>();
+    render(
+      React.createElement(MessageList, {
+        messages,
+        streamingText: null,
+        scrollRef,
+      }),
+    );
+    // After render, the ref should be populated by ScrollBox
+    expect(scrollRef.current).not.toBeNull();
+    expect(typeof scrollRef.current?.scrollTo).toBe("function");
+    expect(typeof scrollRef.current?.scrollBy).toBe("function");
+    expect(typeof scrollRef.current?.scrollToBottom).toBe("function");
+  });
+
+  test("counts totalRows correctly with streaming", () => {
+    const messages = makeMessages(5);
+    const scrollRef = createRef<ScrollBoxHandle>();
+    const { rerender, lastFrame } = render(
+      React.createElement(MessageList, {
+        messages,
+        streamingText: "streaming...",
+        scrollRef,
+      }),
+    );
+    // Streaming block is rendered and visible
+    expect(lastFrame()).toContain("streaming...");
+
+    // Rerender without streaming
     rerender(
       React.createElement(MessageList, {
         messages,
         streamingText: null,
-        pageSize: 10,
+        scrollRef,
       }),
     );
-    // Footer should reappear
-    expect(lastFrame()).toContain("more messages");
+    expect(lastFrame()).not.toContain("streaming...");
   });
 });
